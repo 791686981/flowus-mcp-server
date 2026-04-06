@@ -8,7 +8,7 @@ import { BlockChildrenSchema } from "../schemas/blocks.js";
 export function registerCompositeTools(server: McpServer, client: FlowUsClient) {
   server.tool(
     "create_page_with_content",
-    "Create a new page AND populate it with content blocks in a single operation. Combines page creation and block appending.",
+    "Create a new page AND populate it with content blocks in a single operation. Combines page creation and block appending. IMPORTANT: Omit parent to create a top-level page visible in the sidebar. If parent is specified, the page will be nested inside that parent and may not appear in the sidebar.",
     {
       parent: z
         .object({

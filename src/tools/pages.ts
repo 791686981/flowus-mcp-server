@@ -7,7 +7,7 @@ import { PagePropertiesSchema } from "../schemas/properties.js";
 export function registerPageTools(server: McpServer, client: FlowUsClient) {
   server.tool(
     "create_page",
-    "Create a new page in FlowUS. Can be a standalone page, a sub-page under another page, or a record in a database.",
+    "Create a new page in FlowUS. Can be a standalone page, a sub-page under another page, or a record in a database. IMPORTANT: Omit parent to create a top-level page visible in the sidebar. If parent is specified, the page will be nested inside that parent and may not appear in the sidebar.",
     {
       parent: z
         .object({
