@@ -1,0 +1,25 @@
+{
+  "name": "flowus-mcp-server",
+  "version": "1.0.0",
+  "description": "MCP server for FlowUS API with full block type and rich text support",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "flowus-mcp-server": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}
