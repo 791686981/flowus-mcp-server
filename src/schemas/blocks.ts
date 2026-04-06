@@ -31,21 +31,31 @@ export const BlockTypeEnum = z.enum([
 export const BlockDataSchema = z
   .record(z.string(), z.unknown())
   .describe(
-    `Block data object. Structure depends on block type:
-- Text blocks (paragraph, heading_1/2/3, bulleted_list_item, numbered_list_item, quote, toggle): { rich_text: RichText[], text_color?: Color, background_color?: Color }
-- to_do: { rich_text: RichText[], checked: boolean, text_color?: Color, background_color?: Color }
-- code: { rich_text: RichText[], language: string }
-- callout: { rich_text: RichText[], icon: { emoji: "..." }, text_color?: Color, background_color?: Color }
-- equation: { expression: "LaTeX string" }
-- link_to_page: { page_id: "uuid" }
-- divider: {}
-- bookmark: { url: "https://...", caption?: RichText[] }
-- embed: { url: "https://...", caption?: RichText[] }
-- image/file: { type: "external", external: { url: "https://..." }, caption?: RichText[] }
-- table: { table_width: number, has_column_header: boolean, has_row_header: boolean }
-- table_row: { cells: RichText[][] }
-- column_list/column: {}
-Rich text simplest form: [{ type: "text", text: { content: "Hello" } }]
+    `Block data object. Structure depends on block type.
+
+Text blocks (paragraph, heading_1/2/3, bulleted_list_item, numbered_list_item, quote, toggle):
+  { "rich_text": [{ "type": "text", "text": { "content": "Hello" } }], "text_color"?: "default", "background_color"?: "default" }
+
+to_do (checked is REQUIRED):
+  { "rich_text": [...], "checked": true/false }
+
+code (language is REQUIRED):
+  { "rich_text": [{ "type": "text", "text": { "content": "code here" } }], "language": "JavaScript" }
+
+callout (icon is REQUIRED):
+  { "rich_text": [...], "icon": { "emoji": "💡" }, "background_color"?: "yellow" }
+
+equation: { "expression": "E=mc^2" }
+link_to_page: { "page_id": "uuid" }
+divider: {}
+bookmark: { "url": "https://..." }
+embed: { "url": "https://..." }
+image/file: { "type": "external", "external": { "url": "https://..." } }
+table: { "table_width": 3, "has_column_header": true, "has_row_header": false }
+table_row: { "cells": [[{ "type": "text", "text": { "content": "cell" } }]] }
+column_list/column: {}
+
+IMPORTANT: rich_text items MUST have "type": "text" field. Simplest form: [{ "type": "text", "text": { "content": "Hello" } }]
 Color values: default, gray, brown, orange, yellow, green, blue, purple, pink, red`,
   );
 
