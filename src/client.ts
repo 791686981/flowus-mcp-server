@@ -11,13 +11,17 @@ export class FlowUsClientError extends Error {
   }
 }
 
+const DEFAULT_TIMEOUT = 30_000;
+
 export class FlowUsClient {
   private baseUrl: string;
   private token: string;
+  private timeout: number;
 
-  constructor(token: string, baseUrl?: string) {
+  constructor(token: string, baseUrl?: string, timeout?: number) {
     this.token = token;
     this.baseUrl = baseUrl ?? "https://api.flowus.cn/v1";
+    this.timeout = timeout ?? DEFAULT_TIMEOUT;
   }
 
   private get headers(): Record<string, string> {
@@ -39,28 +43,42 @@ export class FlowUsClient {
       url += `?${searchParams.toString()}`;
     }
 
-    const response = await fetch(url, {
-      method,
-      headers: this.headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      const message = this.formatError(response.status, errorBody);
-      throw new FlowUsClientError(
-        response.status,
-        (errorBody as Record<string, unknown>).code as string ?? "unknown_error",
-        message,
-      );
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: this.headers,
+        body: body ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        const message = this.formatError(response.status, errorBody);
+        throw new FlowUsClientError(
+          response.status,
+          String((errorBody as Record<string, unknown>).code ?? "unknown_error"),
+          message,
+        );
+      }
+
+      return response.json() as Promise<T>;
+    } catch (error) {
+      if (error instanceof FlowUsClientError) throw error;
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new FlowUsClientError(0, "timeout", `Request timed out after ${this.timeout}ms: ${method} ${path}`);
+      }
+      throw new FlowUsClientError(0, "network_error", `Network error: ${String(error)}`);
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    return response.json() as Promise<T>;
   }
 
   private formatError(status: number, body: unknown): string {
     const msg =
-      (body as Record<string, unknown>)?.message as string ?? "Unknown error";
+      String((body as Record<string, unknown>)?.message ?? "Unknown error");
     switch (status) {
       case 400:
         return `Parameter error: ${msg}`;
@@ -97,4 +115,17 @@ export class FlowUsClient {
   async delete<T = unknown>(path: string): Promise<T> {
     return this.request<T>("DELETE", path);
   }
+}
+
+// Helper to build MCP tool success responses
+export function jsonResponse(data: unknown) {
+  return { content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }] };
+}
+
+// Helper to build MCP tool error responses
+export function errorResponse(error: unknown) {
+  const message = error instanceof FlowUsClientError
+    ? error.message
+    : `Unexpected error: ${String(error)}`;
+  return { isError: true as const, content: [{ type: "text" as const, text: message }] };
 }

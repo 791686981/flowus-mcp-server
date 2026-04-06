@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
+import { FlowUsClientError, jsonResponse, errorResponse } from "../client.js";
 import { IconSchema, CoverSchema } from "../schemas/common.js";
 import { PagePropertiesSchema } from "../schemas/properties.js";
 import { BlockChildrenSchema } from "../schemas/blocks.js";
@@ -25,22 +26,33 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
       children: BlockChildrenSchema.describe("Content blocks to add to the page"),
     },
     async ({ children, ...pageArgs }) => {
-      const body: Record<string, unknown> = { properties: pageArgs.properties };
-      if (pageArgs.parent) body.parent = pageArgs.parent;
-      if (pageArgs.icon) body.icon = pageArgs.icon;
-      if (pageArgs.cover) body.cover = pageArgs.cover;
+      // Step 1: Create the page
+      let page: { id: string };
+      try {
+        const body: Record<string, unknown> = { properties: pageArgs.properties };
+        if (pageArgs.parent) body.parent = pageArgs.parent;
+        if (pageArgs.icon) body.icon = pageArgs.icon;
+        if (pageArgs.cover) body.cover = pageArgs.cover;
 
-      const page = (await client.post("/pages", body)) as { id: string };
-      const blocks = await client.patch(`/blocks/${page.id}/children`, { children });
+        page = (await client.post("/pages", body)) as { id: string };
+      } catch (error) {
+        return errorResponse(error);
+      }
 
-      return {
-        content: [
-          {
+      // Step 2: Append content blocks (page already created at this point)
+      try {
+        const blocks = await client.patch(`/blocks/${page.id}/children`, { children });
+        return jsonResponse({ page, blocks });
+      } catch (error) {
+        const msg = error instanceof FlowUsClientError ? error.message : String(error);
+        return {
+          isError: true as const,
+          content: [{
             type: "text" as const,
-            text: JSON.stringify({ page, blocks }, null, 2),
-          },
-        ],
-      };
+            text: `Page created successfully (id: ${page.id}) but adding content blocks failed: ${msg}. You can retry with append_block_children using this page ID.`,
+          }],
+        };
+      }
     },
   );
 
@@ -56,19 +68,34 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
         .describe("If true (default), recursively fetch all nested blocks"),
     },
     async ({ page_id, recursive }) => {
-      const page = await client.get(`/pages/${page_id}`);
-      const params: Record<string, string> = { page_size: "100" };
-      if (recursive) params.recursive = "true";
-      const blocks = await client.get(`/blocks/${page_id}/children`, params);
+      try {
+        const page = await client.get(`/pages/${page_id}`);
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({ page, blocks }, null, 2),
-          },
-        ],
-      };
+        // Fetch all blocks with pagination
+        const allResults: unknown[] = [];
+        let cursor: string | undefined;
+        let hasMore = true;
+
+        while (hasMore) {
+          const params: Record<string, string> = { page_size: "100" };
+          if (recursive) params.recursive = "true";
+          if (cursor) params.start_cursor = cursor;
+
+          const response = await client.get<{
+            results: unknown[];
+            has_more: boolean;
+            next_cursor: string | null;
+          }>(`/blocks/${page_id}/children`, params);
+
+          allResults.push(...response.results);
+          hasMore = response.has_more;
+          cursor = response.next_cursor ?? undefined;
+        }
+
+        return jsonResponse({ page, blocks: { results: allResults, total: allResults.length } });
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 }

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
+import { jsonResponse, errorResponse } from "../client.js";
 import { BlockChildrenSchema, BlockDataSchema, BlockTypeEnum } from "../schemas/blocks.js";
 
 export function registerBlockTools(server: McpServer, client: FlowUsClient) {
@@ -11,8 +12,11 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
       block_id: z.string().describe("The block ID to retrieve"),
     },
     async ({ block_id }) => {
-      const result = await client.get(`/blocks/${block_id}`);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+      try {
+        return jsonResponse(await client.get(`/blocks/${block_id}`));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 
@@ -37,13 +41,16 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
         .describe("If true, recursively fetch all nested children (default false)"),
     },
     async ({ block_id, page_size, start_cursor, recursive }) => {
-      const params: Record<string, string> = {};
-      if (page_size !== undefined) params.page_size = String(page_size);
-      if (start_cursor) params.start_cursor = start_cursor;
-      if (recursive !== undefined) params.recursive = String(recursive);
+      try {
+        const params: Record<string, string> = {};
+        if (page_size !== undefined) params.page_size = String(page_size);
+        if (start_cursor) params.start_cursor = start_cursor;
+        if (recursive !== undefined) params.recursive = String(recursive);
 
-      const result = await client.get(`/blocks/${block_id}/children`, params);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+        return jsonResponse(await client.get(`/blocks/${block_id}/children`, params));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 
@@ -59,11 +66,14 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
         .describe("Block ID to insert after. If omitted, appends to the end."),
     },
     async ({ block_id, children, after }) => {
-      const body: Record<string, unknown> = { children };
-      if (after) body.after = after;
+      try {
+        const body: Record<string, unknown> = { children };
+        if (after) body.after = after;
 
-      const result = await client.patch(`/blocks/${block_id}/children`, body);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+        return jsonResponse(await client.patch(`/blocks/${block_id}/children`, body));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 
@@ -76,9 +86,17 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
       data: BlockDataSchema.optional().describe("New block data/content"),
       archived: z.boolean().optional().describe("Set to true to archive (soft-delete) the block"),
     },
-    async ({ block_id, ...body }) => {
-      const result = await client.patch(`/blocks/${block_id}`, body);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+    async ({ block_id, type, data, archived }) => {
+      try {
+        const body: Record<string, unknown> = {};
+        if (type !== undefined) body.type = type;
+        if (data !== undefined) body.data = data;
+        if (archived !== undefined) body.archived = archived;
+
+        return jsonResponse(await client.patch(`/blocks/${block_id}`, body));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 
@@ -93,8 +111,11 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
       idempotentHint: false,
     },
     async ({ block_id }) => {
-      const result = await client.delete(`/blocks/${block_id}`);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+      try {
+        return jsonResponse(await client.delete(`/blocks/${block_id}`));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 }

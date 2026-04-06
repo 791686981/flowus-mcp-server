@@ -17,6 +17,9 @@
     "dist"
   ],
   "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@types/node": "^25.5.2",

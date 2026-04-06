@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
+import { jsonResponse, errorResponse } from "../client.js";
 import { IconSchema, CoverSchema } from "../schemas/common.js";
 import { DatabasePropertiesSchema } from "../schemas/properties.js";
 
@@ -26,8 +27,11 @@ export function registerDatabaseTools(server: McpServer, client: FlowUsClient) {
       is_inline: z.boolean().optional().describe("If true, create as inline database"),
     },
     async (args) => {
-      const result = await client.post("/databases", args);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+      try {
+        return jsonResponse(await client.post("/databases", args));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 
@@ -38,8 +42,11 @@ export function registerDatabaseTools(server: McpServer, client: FlowUsClient) {
       database_id: z.string().describe("The database ID to retrieve"),
     },
     async ({ database_id }) => {
-      const result = await client.get(`/databases/${database_id}`);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+      try {
+        return jsonResponse(await client.get(`/databases/${database_id}`));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 
@@ -60,12 +67,15 @@ export function registerDatabaseTools(server: McpServer, client: FlowUsClient) {
         .describe("Pagination cursor from a previous response"),
     },
     async ({ database_id, page_size, start_cursor }) => {
-      const body: Record<string, unknown> = {};
-      if (page_size !== undefined) body.page_size = page_size;
-      if (start_cursor) body.start_cursor = start_cursor;
+      try {
+        const body: Record<string, unknown> = {};
+        if (page_size !== undefined) body.page_size = page_size;
+        if (start_cursor) body.start_cursor = start_cursor;
 
-      const result = await client.post(`/databases/${database_id}/query`, body);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+        return jsonResponse(await client.post(`/databases/${database_id}/query`, body));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 
@@ -90,9 +100,19 @@ export function registerDatabaseTools(server: McpServer, client: FlowUsClient) {
       cover: CoverSchema.optional(),
       archived: z.boolean().optional().describe("Set to true to archive the database"),
     },
-    async ({ database_id, ...body }) => {
-      const result = await client.patch(`/databases/${database_id}`, body);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+    async ({ database_id, title, properties, icon, cover, archived }) => {
+      try {
+        const body: Record<string, unknown> = {};
+        if (title !== undefined) body.title = title;
+        if (properties !== undefined) body.properties = properties;
+        if (icon !== undefined) body.icon = icon;
+        if (cover !== undefined) body.cover = cover;
+        if (archived !== undefined) body.archived = archived;
+
+        return jsonResponse(await client.patch(`/databases/${database_id}`, body));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 }

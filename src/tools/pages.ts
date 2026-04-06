@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
+import { jsonResponse, errorResponse } from "../client.js";
 import { IconSchema, CoverSchema } from "../schemas/common.js";
 import { PagePropertiesSchema } from "../schemas/properties.js";
 
@@ -23,13 +24,16 @@ export function registerPageTools(server: McpServer, client: FlowUsClient) {
       cover: CoverSchema.optional(),
     },
     async (args) => {
-      const body: Record<string, unknown> = { properties: args.properties };
-      if (args.parent) body.parent = args.parent;
-      if (args.icon) body.icon = args.icon;
-      if (args.cover) body.cover = args.cover;
+      try {
+        const body: Record<string, unknown> = { properties: args.properties };
+        if (args.parent) body.parent = args.parent;
+        if (args.icon) body.icon = args.icon;
+        if (args.cover) body.cover = args.cover;
 
-      const result = await client.post("/pages", body);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+        return jsonResponse(await client.post("/pages", body));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 
@@ -40,8 +44,11 @@ export function registerPageTools(server: McpServer, client: FlowUsClient) {
       page_id: z.string().describe("The page ID to retrieve"),
     },
     async ({ page_id }) => {
-      const result = await client.get(`/pages/${page_id}`);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+      try {
+        return jsonResponse(await client.get(`/pages/${page_id}`));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 
@@ -55,9 +62,18 @@ export function registerPageTools(server: McpServer, client: FlowUsClient) {
       cover: CoverSchema.optional(),
       archived: z.boolean().optional().describe("Set to true to archive the page"),
     },
-    async ({ page_id, ...body }) => {
-      const result = await client.patch(`/pages/${page_id}`, body);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+    async ({ page_id, properties, icon, cover, archived }) => {
+      try {
+        const body: Record<string, unknown> = {};
+        if (properties !== undefined) body.properties = properties;
+        if (icon !== undefined) body.icon = icon;
+        if (cover !== undefined) body.cover = cover;
+        if (archived !== undefined) body.archived = archived;
+
+        return jsonResponse(await client.patch(`/pages/${page_id}`, body));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 }

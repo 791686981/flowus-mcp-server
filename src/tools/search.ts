@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
+import { jsonResponse, errorResponse } from "../client.js";
 
 export function registerSearchTools(server: McpServer, client: FlowUsClient) {
   server.tool(
@@ -20,8 +21,11 @@ export function registerSearchTools(server: McpServer, client: FlowUsClient) {
         .describe("Pagination cursor from a previous response"),
     },
     async (args) => {
-      const result = await client.post("/search", args);
-      return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
+      try {
+        return jsonResponse(await client.post("/search", args));
+      } catch (error) {
+        return errorResponse(error);
+      }
     },
   );
 }
