@@ -7,7 +7,7 @@ import { DatabasePropertiesSchema } from "../schemas/properties.js";
 export function registerDatabaseTools(server: McpServer, client: FlowUsClient) {
   server.tool(
     "create_database",
-    "Create a new database (multi-dimensional table) under a page in FlowUS.",
+    "Create a new database (multi-dimensional table) under a page in FlowUS. NOTE: Databases must have a parent page. If you want the database visible in the sidebar, first create a page WITHOUT parent (so it appears in sidebar), then create the database under that page.",
     {
       parent: z.object({
         type: z.literal("page_id").default("page_id"),

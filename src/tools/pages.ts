@@ -15,7 +15,7 @@ export function registerPageTools(server: McpServer, client: FlowUsClient) {
           database_id: z.string().optional().describe("Parent database ID"),
         })
         .optional()
-        .describe("Parent location. Omit to create at default location."),
+        .describe("Parent location. WARNING: Setting this makes the page hidden from sidebar. Only set when user explicitly wants a sub-page."),
       properties: PagePropertiesSchema.describe(
         "Page properties. At minimum, include a title property.",
       ),
