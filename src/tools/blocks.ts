@@ -88,6 +88,10 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
     {
       block_id: z.string().describe("The block ID to delete"),
     },
+    {
+      destructiveHint: true,
+      idempotentHint: false,
+    },
     async ({ block_id }) => {
       const result = await client.delete(`/blocks/${block_id}`);
       return { content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }] };
