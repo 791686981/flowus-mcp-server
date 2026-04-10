@@ -4,6 +4,8 @@ import type { FlowUsClient } from "../client.js";
 import { jsonResponse, errorResponse } from "../client.js";
 import { IconSchema, CoverSchema } from "../schemas/common.js";
 import { PagePropertiesSchema } from "../schemas/properties.js";
+import { InputPagePropertiesSchema } from "../schemas/input/properties.js";
+import { normalizePageProperties } from "../normalizers/properties.js";
 
 export function registerPageTools(server: McpServer, client: FlowUsClient) {
   server.tool(
@@ -17,7 +19,7 @@ export function registerPageTools(server: McpServer, client: FlowUsClient) {
         })
         .optional()
         .describe("Parent location. WARNING: Setting this makes the page hidden from sidebar. Only set when user explicitly wants a sub-page."),
-      properties: PagePropertiesSchema.describe(
+      properties: InputPagePropertiesSchema.describe(
         "Page properties. At minimum, include a title property.",
       ),
       icon: IconSchema.optional(),
@@ -25,7 +27,11 @@ export function registerPageTools(server: McpServer, client: FlowUsClient) {
     },
     async (args) => {
       try {
-        const body: Record<string, unknown> = { properties: args.properties };
+        const body: Record<string, unknown> = {
+          properties: PagePropertiesSchema.parse(
+            normalizePageProperties(args.properties),
+          ),
+        };
         if (args.parent) body.parent = args.parent;
         if (args.icon) body.icon = args.icon;
         if (args.cover) body.cover = args.cover;
@@ -57,7 +63,7 @@ export function registerPageTools(server: McpServer, client: FlowUsClient) {
     "Update a FlowUS page's properties, icon, cover, or archive status.",
     {
       page_id: z.string().describe("The page ID to update"),
-      properties: PagePropertiesSchema.optional().describe("Properties to update"),
+      properties: InputPagePropertiesSchema.optional().describe("Properties to update"),
       icon: IconSchema.optional(),
       cover: CoverSchema.optional(),
       archived: z.boolean().optional().describe("Set to true to archive the page"),
@@ -65,7 +71,11 @@ export function registerPageTools(server: McpServer, client: FlowUsClient) {
     async ({ page_id, properties, icon, cover, archived }) => {
       try {
         const body: Record<string, unknown> = {};
-        if (properties !== undefined) body.properties = properties;
+        if (properties !== undefined) {
+          body.properties = PagePropertiesSchema.parse(
+            normalizePageProperties(properties),
+          );
+        }
         if (icon !== undefined) body.icon = icon;
         if (cover !== undefined) body.cover = cover;
         if (archived !== undefined) body.archived = archived;

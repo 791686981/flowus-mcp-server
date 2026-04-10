@@ -1,5 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { RegisteredTool } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { safeParse } from "@modelcontextprotocol/sdk/server/zod-compat.js";
 import type { FlowUsClient } from "../../src/client.js";
 
 type ToolRegistrar = (server: McpServer, client: FlowUsClient) => void;
@@ -32,7 +33,17 @@ export function createToolRunner(register: ToolRegistrar, client: FlowUsClient) 
         throw new Error(`Tool handler is not callable: ${name}`);
       }
 
-      return tool.handler(args, {} as never);
+      const parsedArgs = tool.inputSchema
+        ? (() => {
+            const result = safeParse(tool.inputSchema, args);
+            if (!result.success) {
+              throw result.error;
+            }
+            return result.data;
+          })()
+        : args;
+
+      return tool.handler(parsedArgs, {} as never);
     },
   };
 }

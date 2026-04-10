@@ -1,27 +1,15 @@
 import { z } from "zod";
 
-export const PagePropertiesSchema = z
-  .record(z.string(), z.unknown())
-  .describe(
-    `Page properties object. Keys are property names, values MUST include "type" field.
+export {
+  ApiPagePropertiesSchema,
+  ApiTitlePropertySchema,
+  ApiPagePropertiesSchema as PagePropertiesSchema,
+} from "./api/properties.js";
 
-CORRECT format (note "type" is REQUIRED in each value):
-- title: { "type": "title", "title": [{ "text": { "content": "Page Title" } }] }
-- rich_text: { "type": "rich_text", "rich_text": [{ "text": { "content": "Text" } }] }
-- number: { "type": "number", "number": 42 }
-- checkbox: { "type": "checkbox", "checkbox": true }
-- select: { "type": "select", "select": { "name": "Option" } }
-- multi_select: { "type": "multi_select", "multi_select": [{ "name": "Tag1" }] }
-- date: { "type": "date", "date": { "start": "2024-01-15" } }
-- url: { "type": "url", "url": "https://example.com" }
-- email: { "type": "email", "email": "user@example.com" }
-- phone_number: { "type": "phone_number", "phone_number": "+86 138-0013-8000" }
-- people: { "type": "people", "people": [{ "id": "user-uuid" }] }
-- files: { "type": "files", "files": [{ "name": "doc.pdf", "external": { "url": "..." } }] }
-- relation: { "type": "relation", "relation": [{ "id": "page-uuid" }] }
-
-WRONG (missing "type" — will silently fail): { "title": [{ "text": { "content": "..." } }] }`,
-  );
+export {
+  InputPagePropertiesSchema,
+  InputTitlePropertySchema,
+} from "./input/properties.js";
 
 export const DatabasePropertiesSchema = z
   .record(z.string(), z.unknown())
