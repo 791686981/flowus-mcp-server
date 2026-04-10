@@ -1,4 +1,5 @@
 // src/client.ts
+import { ZodError } from "zod";
 
 export class FlowUsClientError extends Error {
   constructor(
@@ -12,6 +13,52 @@ export class FlowUsClientError extends Error {
 }
 
 const DEFAULT_TIMEOUT = 30_000;
+
+export type FlowUsLocalErrorStage = "input" | "normalization" | "payload";
+
+const LOCAL_ERROR_PREFIX: Record<FlowUsLocalErrorStage, string> = {
+  input: "Local input validation error",
+  normalization: "Local normalization error",
+  payload: "Local payload validation error",
+};
+
+export class FlowUsLocalError extends Error {
+  constructor(
+    public stage: FlowUsLocalErrorStage,
+    message: string,
+  ) {
+    super(`${LOCAL_ERROR_PREFIX[stage]}: ${message}`);
+    this.name = "FlowUsLocalError";
+  }
+}
+
+export function formatValidationError(error: unknown): string {
+  if (error instanceof ZodError) {
+    return error.issues
+      .map((issue) => {
+        const path = issue.path.join(".");
+        return path ? `${path}: ${issue.message}` : issue.message;
+      })
+      .join("; ");
+  }
+
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
+}
+
+export function localStageError(
+  stage: FlowUsLocalErrorStage,
+  error: unknown,
+) {
+  if (error instanceof FlowUsLocalError) {
+    return error;
+  }
+
+  return new FlowUsLocalError(stage, formatValidationError(error));
+}
 
 export class FlowUsClient {
   private baseUrl: string;
@@ -125,6 +172,7 @@ export function jsonResponse(data: unknown) {
 // Helper to build MCP tool error responses
 export function errorResponse(error: unknown) {
   const message = error instanceof FlowUsClientError
+    || error instanceof FlowUsLocalError
     ? error.message
     : `Unexpected error: ${String(error)}`;
   return { isError: true as const, content: [{ type: "text" as const, text: message }] };

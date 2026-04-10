@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type FlowUsLocalErrorStage, localStageError } from "../client.js";
 import { CoverSchema, IconSchema } from "../schemas/common.js";
 import { InputIconSchema } from "../schemas/input/common.js";
 import { InputPagePropertiesSchema } from "../schemas/input/properties.js";
@@ -25,6 +26,18 @@ const CreatePagePayloadSchema = z.object({
   cover: CoverSchema.optional(),
 });
 
+function parseSchemaForStage<Schema extends z.ZodTypeAny>(
+  stage: FlowUsLocalErrorStage,
+  schema: Schema,
+  value: unknown,
+): z.output<Schema> {
+  try {
+    return schema.parse(value);
+  } catch (error) {
+    throw localStageError(stage, error);
+  }
+}
+
 export function parseAndNormalize<
   InputSchema extends z.ZodTypeAny,
   OutputSchema extends z.ZodTypeAny,
@@ -34,8 +47,16 @@ export function parseAndNormalize<
   normalize: (parsedValue: z.output<InputSchema>) => unknown,
   outputSchema: OutputSchema,
 ): z.output<OutputSchema> {
-  const parsedValue = inputSchema.parse(value);
-  return outputSchema.parse(normalize(parsedValue));
+  const parsedValue = parseSchemaForStage("input", inputSchema, value);
+
+  let normalizedValue: unknown;
+  try {
+    normalizedValue = normalize(parsedValue);
+  } catch (error) {
+    throw localStageError("normalization", error);
+  }
+
+  return parseSchemaForStage("payload", outputSchema, normalizedValue);
 }
 
 export function parseAndNormalizeOptional<
@@ -63,7 +84,7 @@ export function normalizePagePayloadFields(args: {
   const body: Record<string, unknown> = {};
 
   if (args.parent !== undefined) {
-    body.parent = PageParentSchema.parse(args.parent);
+    body.parent = parseSchemaForStage("input", PageParentSchema, args.parent);
   }
 
   if (args.properties !== undefined) {
@@ -86,10 +107,10 @@ export function normalizePagePayloadFields(args: {
   }
 
   if (args.cover !== undefined) {
-    body.cover = CoverSchema.parse(args.cover);
+    body.cover = parseSchemaForStage("input", CoverSchema, args.cover);
   }
 
-  return NormalizedPagePayloadSchema.parse(body);
+  return parseSchemaForStage("payload", NormalizedPagePayloadSchema, body);
 }
 
 export function buildCreatePagePayload(args: {
@@ -98,5 +119,9 @@ export function buildCreatePagePayload(args: {
   icon?: unknown;
   cover?: unknown;
 }) {
-  return CreatePagePayloadSchema.parse(normalizePagePayloadFields(args));
+  return parseSchemaForStage(
+    "payload",
+    CreatePagePayloadSchema,
+    normalizePagePayloadFields(args),
+  );
 }
