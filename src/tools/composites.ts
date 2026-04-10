@@ -2,26 +2,24 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
 import { FlowUsClientError, jsonResponse, errorResponse } from "../client.js";
-import { IconSchema, CoverSchema } from "../schemas/common.js";
-import { PagePropertiesSchema } from "../schemas/properties.js";
+import { CoverSchema } from "../schemas/common.js";
+import { InputIconSchema } from "../schemas/input/common.js";
+import { InputPagePropertiesSchema } from "../schemas/input/properties.js";
 import { BlockChildrenSchema } from "../schemas/blocks.js";
+import { PageParentSchema, buildCreatePagePayload } from "../utils/validation.js";
 
 export function registerCompositeTools(server: McpServer, client: FlowUsClient) {
   server.tool(
     "create_page_with_content",
     "Create a new page AND populate it with content blocks in a single operation. Combines page creation and block appending. IMPORTANT: By default, DO NOT specify parent — this creates the page at the top level where the user can see it in the sidebar. Only specify parent.page_id when the user explicitly asks to create a sub-page under a specific page. Pages created with parent are hidden from the sidebar and can only be found via search or direct link.",
     {
-      parent: z
-        .object({
-          page_id: z.string().optional().describe("Parent page ID"),
-          database_id: z.string().optional().describe("Parent database ID"),
-        })
+      parent: PageParentSchema
         .optional()
         .describe("Parent location. WARNING: Setting this makes the page hidden from sidebar. Only set when user explicitly wants a sub-page."),
-      properties: PagePropertiesSchema.describe(
+      properties: InputPagePropertiesSchema.describe(
         "Page properties. At minimum, include a title property.",
       ),
-      icon: IconSchema.optional(),
+      icon: InputIconSchema.optional(),
       cover: CoverSchema.optional(),
       children: BlockChildrenSchema.describe("Content blocks to add to the page"),
     },
@@ -29,12 +27,7 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
       // Step 1: Create the page
       let page: { id: string };
       try {
-        const body: Record<string, unknown> = { properties: pageArgs.properties };
-        if (pageArgs.parent) body.parent = pageArgs.parent;
-        if (pageArgs.icon) body.icon = pageArgs.icon;
-        if (pageArgs.cover) body.cover = pageArgs.cover;
-
-        page = (await client.post("/pages", body)) as { id: string };
+        page = (await client.post("/pages", buildCreatePagePayload(pageArgs))) as { id: string };
       } catch (error) {
         return errorResponse(error);
       }
