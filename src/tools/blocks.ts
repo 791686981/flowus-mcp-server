@@ -3,6 +3,9 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
 import { jsonResponse, errorResponse } from "../client.js";
 import { BlockChildrenSchema, BlockDataSchema, BlockTypeEnum } from "../schemas/blocks.js";
+import { InputBlockChildrenSchema } from "../schemas/input/blocks.js";
+import { normalizeBlockChildren } from "../normalizers/blocks.js";
+import { parseAndNormalize } from "../utils/validation.js";
 
 export function registerBlockTools(server: McpServer, client: FlowUsClient) {
   server.tool(
@@ -59,7 +62,7 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
     "Append child blocks to a page or block. Supports all block types: paragraph, headings, lists, to_do, quote, toggle, code, callout, equation, divider, bookmark, embed, image, file, table, and more.",
     {
       block_id: z.string().describe("The parent block or page ID to append to"),
-      children: BlockChildrenSchema,
+      children: InputBlockChildrenSchema,
       after: z
         .string()
         .optional()
@@ -67,7 +70,14 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
     },
     async ({ block_id, children, after }) => {
       try {
-        const body: Record<string, unknown> = { children };
+        const body: Record<string, unknown> = {
+          children: parseAndNormalize(
+            InputBlockChildrenSchema,
+            children,
+            normalizeBlockChildren,
+            BlockChildrenSchema,
+          ),
+        };
         if (after) body.after = after;
 
         return jsonResponse(await client.patch(`/blocks/${block_id}/children`, body));
