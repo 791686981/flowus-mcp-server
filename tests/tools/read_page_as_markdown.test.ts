@@ -14,7 +14,8 @@ test("read_page_as_markdown returns markdown, page metadata, and block mapping",
         id: "page_123",
         properties: {
           title: {
-            title: [{ plain_text: "Project Spec" }],
+            type: "title",
+            title: [{ type: "text", text: { content: "Project Spec" } }],
           },
         },
       };

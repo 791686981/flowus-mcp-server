@@ -2,11 +2,40 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
 import { FlowUsClientError, jsonResponse, errorResponse } from "../client.js";
+import { renderPageToMarkdown } from "../markdown/render_page.js";
 import { CoverSchema } from "../schemas/common.js";
 import { InputIconSchema } from "../schemas/input/common.js";
 import { InputPagePropertiesSchema } from "../schemas/input/properties.js";
 import { BlockChildrenSchema } from "../schemas/blocks.js";
 import { PageParentSchema, buildCreatePagePayload } from "../utils/validation.js";
+
+async function fetchAllBlockChildren(
+  client: FlowUsClient,
+  blockId: string,
+  recursive: boolean,
+) {
+  const allResults: unknown[] = [];
+  let cursor: string | undefined;
+  let hasMore = true;
+
+  while (hasMore) {
+    const params: Record<string, string> = { page_size: "100" };
+    if (recursive) params.recursive = "true";
+    if (cursor) params.start_cursor = cursor;
+
+    const response = await client.get<{
+      results: unknown[];
+      has_more: boolean;
+      next_cursor: string | null;
+    }>(`/blocks/${blockId}/children`, params);
+
+    allResults.push(...response.results);
+    hasMore = response.has_more;
+    cursor = response.next_cursor ?? undefined;
+  }
+
+  return allResults;
+}
 
 export function registerCompositeTools(server: McpServer, client: FlowUsClient) {
   server.tool(
@@ -63,29 +92,51 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
     async ({ page_id, recursive }) => {
       try {
         const page = await client.get(`/pages/${page_id}`);
-
-        // Fetch all blocks with pagination
-        const allResults: unknown[] = [];
-        let cursor: string | undefined;
-        let hasMore = true;
-
-        while (hasMore) {
-          const params: Record<string, string> = { page_size: "100" };
-          if (recursive) params.recursive = "true";
-          if (cursor) params.start_cursor = cursor;
-
-          const response = await client.get<{
-            results: unknown[];
-            has_more: boolean;
-            next_cursor: string | null;
-          }>(`/blocks/${page_id}/children`, params);
-
-          allResults.push(...response.results);
-          hasMore = response.has_more;
-          cursor = response.next_cursor ?? undefined;
-        }
+        const allResults = await fetchAllBlockChildren(client, page_id, recursive);
 
         return jsonResponse({ page, blocks: { results: allResults, total: allResults.length } });
+      } catch (error) {
+        return errorResponse(error);
+      }
+    },
+  );
+
+  server.tool(
+    "read_page_as_markdown",
+    "Read a page and render its content as Markdown, with optional metadata for block mapping.",
+    {
+      page_id: z.string().describe("The page ID to read"),
+      recursive: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe("If true (default), recursively fetch all nested blocks"),
+      include_properties: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe("If true (default), include page title and simple properties in the markdown header"),
+      include_metadata: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe("If true (default), include block mapping metadata and unsupported block diagnostics"),
+    },
+    async ({ page_id, recursive, include_properties, include_metadata }) => {
+      try {
+        const page = await client.get(`/pages/${page_id}`);
+        const blocks = await fetchAllBlockChildren(client, page_id, recursive);
+        const rendered = renderPageToMarkdown(
+          page as Record<string, unknown>,
+          blocks as Array<Record<string, unknown>>,
+          { includeProperties: include_properties },
+        );
+
+        return jsonResponse({
+          page,
+          markdown: rendered.markdown,
+          metadata: include_metadata ? rendered.metadata : undefined,
+        });
       } catch (error) {
         return errorResponse(error);
       }
