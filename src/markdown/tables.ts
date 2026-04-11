@@ -1,4 +1,5 @@
 import type {
+  FlowUsTableBlock,
   InlineRichText,
   NormalizedTable,
   TableCell,
@@ -47,5 +48,41 @@ export function normalizeTable(node: TableNode): NormalizedTable {
     width,
     hasHeaderRow: Boolean(node.hasHeaderRow),
     rows: normalizedRows,
+  };
+}
+
+function flowUsCellToPlainText(cell: Array<{ type: string; text?: { content?: string } }>): string {
+  return cell
+    .map((item) => {
+      if (item.type === "text" && typeof item.text?.content === "string") {
+        return item.text.content;
+      }
+      throw new Error("Only text rich_text items are supported in table cells");
+    })
+    .join("");
+}
+
+export function flowusTableToTableNode(table: FlowUsTableBlock): TableNode {
+  const width = table.data?.table_width ?? 0;
+  const hasHeaderRow = Boolean(table.data?.has_column_header);
+  const rows = table.children ?? [];
+  if (width <= 0 || rows.length === 0) {
+    throw new Error("Table must contain column width and at least one row");
+  }
+
+  const markdownRows = rows.map((row, index) => {
+    if (!row.data?.cells) {
+      throw new Error(`Row ${index + 1} is missing cells`);
+    }
+    if (row.data.cells.length !== width) {
+      throw new Error(`Row ${index + 1} has mismatched column width`);
+    }
+    return row.data.cells.map((cell) => flowUsCellToPlainText(cell));
+  });
+
+  return {
+    type: "table",
+    rows: markdownRows,
+    hasHeaderRow,
   };
 }
