@@ -26,6 +26,21 @@ test("renderBlocksToMarkdown renders core blocks, dividers, and simple tables", 
       },
     },
     {
+      id: "list_2",
+      type: "numbered_list_item",
+      data: {
+        rich_text: [{ type: "text", text: { content: "Implement renderer" } }],
+      },
+    },
+    {
+      id: "todo_1",
+      type: "to_do",
+      data: {
+        checked: true,
+        rich_text: [{ type: "text", text: { content: "Ship the markdown interface" } }],
+      },
+    },
+    {
       id: "quote_1",
       type: "quote",
       data: {
@@ -81,6 +96,8 @@ test("renderBlocksToMarkdown renders core blocks, dividers, and simple tables", 
   assert.match(result.markdown, /^## Summary$/m);
   assert.match(result.markdown, /This page explains the rollout\./);
   assert.match(result.markdown, /^- Capture requirements$/m);
+  assert.match(result.markdown, /^1\. Implement renderer$/m);
+  assert.match(result.markdown, /^- \[x\] Ship the markdown interface$/m);
   assert.match(result.markdown, /^> Ship the markdown interface first\.$/m);
   assert.match(result.markdown, /```ts[\s\S]*const ready = true;[\s\S]*```/m);
   assert.match(result.markdown, /^---$/m);
@@ -93,6 +110,8 @@ test("renderBlocksToMarkdown renders core blocks, dividers, and simple tables", 
     "heading_1",
     "paragraph_1",
     "list_1",
+    "list_2",
+    "todo_1",
     "quote_1",
     "code_1",
     "divider_1",
