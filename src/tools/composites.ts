@@ -2,6 +2,8 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
 import { FlowUsClientError, jsonResponse, errorResponse } from "../client.js";
+import { blocksFromMarkdown } from "../markdown/blocks_from_markdown.js";
+import { parseMarkdownDocument } from "../markdown/parse_markdown.js";
 import { renderPageToMarkdown } from "../markdown/render_page.js";
 import { CoverSchema } from "../schemas/common.js";
 import { InputIconSchema } from "../schemas/input/common.js";
@@ -138,6 +140,59 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
           metadata: include_metadata ? rendered.metadata : undefined,
         });
       } catch (error) {
+        return errorResponse(error);
+      }
+    },
+  );
+
+  server.tool(
+    "create_page_from_markdown",
+    "Create a page from Markdown content while keeping page properties explicit. The markdown body is parsed into supported FlowUS blocks locally before any API call.",
+    {
+      parent: PageParentSchema
+        .optional()
+        .describe("Parent location. WARNING: Setting this makes the page hidden from sidebar. Only set when user explicitly wants a sub-page."),
+      properties: InputPagePropertiesSchema.describe(
+        "Page properties. At minimum, include a title property.",
+      ),
+      icon: InputIconSchema.optional(),
+      cover: CoverSchema.optional(),
+      markdown: z.string().describe("Markdown body content to parse into FlowUS blocks."),
+      strict: z
+        .boolean()
+        .optional()
+        .default(true)
+        .describe("Reserved for future parser modes. Currently only strict parsing is supported."),
+    },
+    async ({ markdown, strict: _strict, ...pageArgs }) => {
+      let page: { id: string };
+
+      try {
+        const document = parseMarkdownDocument(markdown);
+        const children = BlockChildrenSchema.parse(blocksFromMarkdown(document.nodes));
+
+        page = (await client.post("/pages", buildCreatePagePayload(pageArgs))) as { id: string };
+        const blocks = await client.patch(`/blocks/${page.id}/children`, { children });
+
+        return jsonResponse({
+          page,
+          blocks,
+          summary: {
+            parsed_block_count: children.length,
+            parsed_table_count: document.nodes.filter((node) => node.type === "table").length,
+          },
+        });
+      } catch (error) {
+        if (page) {
+          const msg = error instanceof FlowUsClientError ? error.message : String(error);
+          return {
+            isError: true as const,
+            content: [{
+              type: "text" as const,
+              text: `Page created successfully (id: ${page.id}) but adding markdown content failed: ${msg}.`,
+            }],
+          };
+        }
         return errorResponse(error);
       }
     },
