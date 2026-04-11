@@ -31,7 +31,14 @@ function richTextToPlainText(richText: unknown): string {
       ) {
         return (item as { text: { content: string } }).text.content;
       }
-      return "";
+      if (
+        item &&
+        typeof item === "object" &&
+        typeof (item as { type?: unknown }).type === "string"
+      ) {
+        return `[unsupported-rich-text type="${String((item as { type: string }).type)}"]`;
+      }
+      return "[unsupported-rich-text]";
     })
     .join("");
 }

@@ -21,17 +21,24 @@ function countLines(text: string): number {
 }
 
 function extractTitle(properties: Record<string, unknown> | undefined): string | undefined {
-  const titleProp = properties?.title;
-  if (
-    titleProp &&
-    typeof titleProp === "object" &&
-    Array.isArray((titleProp as { title?: unknown[] }).title)
-  ) {
-    const first = (titleProp as { title: Array<{ text?: { content?: string } }> }).title[0];
-    if (typeof first?.text?.content === "string") {
-      return first.text.content;
+  if (!properties) {
+    return undefined;
+  }
+
+  for (const value of Object.values(properties)) {
+    if (
+      value &&
+      typeof value === "object" &&
+      (value as { type?: unknown }).type === "title" &&
+      Array.isArray((value as { title?: unknown[] }).title)
+    ) {
+      const first = (value as { title: Array<{ text?: { content?: string } }> }).title[0];
+      if (typeof first?.text?.content === "string") {
+        return first.text.content;
+      }
     }
   }
+
   return undefined;
 }
 
@@ -45,7 +52,11 @@ function renderPageHeader(page: FlowUsPage): string {
   }
 
   for (const [key, value] of Object.entries(properties)) {
-    if (key === "title") {
+    if (
+      value &&
+      typeof value === "object" &&
+      (value as { type?: unknown }).type === "title"
+    ) {
       continue;
     }
     if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {

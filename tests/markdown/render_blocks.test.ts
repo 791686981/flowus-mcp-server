@@ -142,3 +142,21 @@ test("renderBlocksToMarkdown emits placeholders and metadata for unsupported blo
     },
   ]);
 });
+
+test("renderBlocksToMarkdown does not silently drop non-text rich text segments", () => {
+  const result = renderBlocksToMarkdown([
+    {
+      id: "paragraph_formula",
+      type: "paragraph",
+      data: {
+        rich_text: [
+          { type: "text", text: { content: "Energy: " } },
+          { type: "equation", expression: "mc^2" },
+        ],
+      },
+    },
+  ]);
+
+  assert.match(result.markdown, /Energy:/);
+  assert.match(result.markdown, /\[unsupported-rich-text type="equation"\]/);
+});

@@ -6,6 +6,7 @@ const page = {
   id: "page_1",
   properties: {
     title: {
+      type: "title",
       title: [{ type: "text", text: { content: "Project Spec" } }],
     },
     status: "Draft",
@@ -51,6 +52,28 @@ test("renderPageToMarkdown omits page properties when disabled", () => {
   assert.doesNotMatch(result.markdown, /^- status: Draft$/m);
   assert.doesNotMatch(result.markdown, /^- owner: AI Team$/m);
   assert.match(result.markdown, /^# Overview$/m);
+});
+
+test("renderPageToMarkdown finds the title property by type instead of key name", () => {
+  const result = renderPageToMarkdown(
+    {
+      id: "page_2",
+      properties: {
+        name: {
+          type: "title",
+          title: [{ type: "text", text: { content: "Database Record Title" } }],
+        },
+        status: "In Review",
+      },
+    },
+    blocks,
+    {
+      includeProperties: true,
+    },
+  );
+
+  assert.match(result.markdown, /^# Database Record Title$/m);
+  assert.match(result.markdown, /^- status: In Review$/m);
 });
 
 test("renderPageToMarkdown returns metadata with line ranges", () => {
