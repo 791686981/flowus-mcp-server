@@ -39,9 +39,11 @@ export type TableCell = {
 
 export type TableRow = TableCell[];
 
+export type TableCellInput = string | InlineRichText;
+
 export type TableNode = {
   type: "table";
-  rows: Array<Array<string | { type: string; text?: string }>>;
+  rows: TableCellInput[][];
   hasHeaderRow: boolean;
 };
 
@@ -76,7 +78,7 @@ export type FlowUsTableRow = {
   id: string;
   type: "table_row";
   data: {
-    cells: Array<Array<{ type: string; text?: { content: string } }>>;
+    cells: InlineRichText[][];
   };
 };
 

@@ -3,10 +3,11 @@ import type {
   InlineRichText,
   NormalizedTable,
   TableCell,
+  TableCellInput,
   TableNode,
 } from "./types.js";
 
-function toInlineRichText(cell: unknown): InlineRichText {
+function toInlineRichText(cell: TableCellInput): InlineRichText {
   if (typeof cell === "string") {
     return { type: "text", text: { content: cell } };
   }
@@ -23,7 +24,7 @@ function toInlineRichText(cell: unknown): InlineRichText {
   throw new Error("Only inline text content is supported in table cells");
 }
 
-function toCell(cell: unknown): TableCell {
+function toCell(cell: TableCellInput): TableCell {
   return { rich_text: [toInlineRichText(cell)] };
 }
 

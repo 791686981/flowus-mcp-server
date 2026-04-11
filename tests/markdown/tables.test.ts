@@ -29,6 +29,24 @@ test("normalizeTable keeps simple tables well-formed", () => {
   ]);
 });
 
+test("normalizeTable accepts canonical inline text cell objects", () => {
+  const table: TableNode = {
+    type: "table",
+    rows: [
+      [{ type: "text", text: { content: "Name" } }, "Status"],
+      ["API", "Done"],
+    ],
+    hasHeaderRow: true,
+  };
+
+  const normalized = normalizeTable(table);
+
+  assert.deepEqual(normalized.rows[0], [
+    { rich_text: [{ type: "text", text: { content: "Name" } }] },
+    { rich_text: [{ type: "text", text: { content: "Status" } }] },
+  ]);
+});
+
 test("normalizeTable rejects rows with mismatched width", () => {
   const table: TableNode = {
     type: "table",
@@ -45,7 +63,7 @@ test("normalizeTable rejects rows with mismatched width", () => {
 test("normalizeTable rejects block-level cell content", () => {
   const table: TableNode = {
     type: "table",
-    rows: [["Name", { type: "paragraph", text: "Bad" }]],
+    rows: [["Name", { type: "paragraph", text: { content: "Bad" } } as never]],
     hasHeaderRow: false,
   };
 
