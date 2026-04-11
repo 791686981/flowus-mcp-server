@@ -80,3 +80,21 @@ Ship the markdown API first.`,
     },
   });
 });
+
+test("create_page_from_markdown fails locally for malformed markdown before any api call", async () => {
+  const client = createFakeFlowUsClient();
+  const runner = createToolRunner(registerCompositeTools, client);
+
+  const result = await runner.callTool("create_page_from_markdown", {
+    properties: {
+      title: "Broken Markdown",
+    },
+    markdown: `| Name |
+| --- | --- |
+| API |`,
+  });
+
+  assert.equal(result.isError, true);
+  assert.match(result.content[0].text, /table/i);
+  assert.equal(client.requests.length, 0);
+});

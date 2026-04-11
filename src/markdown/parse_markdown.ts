@@ -10,6 +10,21 @@ function text(content: string) {
   return [{ type: "text" as const, text: { content } }];
 }
 
+function rejectUnsupportedSyntax(line: string, trimmed: string) {
+  if (/^(#{4,})\s+/.test(trimmed)) {
+    throw new Error("Unsupported heading level in strict markdown mode");
+  }
+  if (/^\*\s+/.test(trimmed)) {
+    throw new Error("Unsupported unordered list marker in strict markdown mode");
+  }
+  if (/^!\[[^\]]*\]\([^)]+\)$/.test(trimmed)) {
+    throw new Error("Unsupported image syntax in strict markdown mode");
+  }
+  if (/^[ \t]+(?:- |\* |\d+\.\s|- \[[ xX]\]\s)/.test(line)) {
+    throw new Error("Unsupported nested list in strict markdown mode");
+  }
+}
+
 function parseTableRow(line: string): string[] {
   const trimmed = line.trim();
   if (!trimmed.includes("|")) {
@@ -82,6 +97,8 @@ export function parseMarkdownDocument(markdown: string): ParsedMarkdownDocument 
       index += 1;
       continue;
     }
+
+    rejectUnsupportedSyntax(line, trimmed);
 
     const tableCandidate = lines[index + 1] ?? "";
     if (trimmed.includes("|") && TABLE_SEPARATOR_RE.test(tableCandidate)) {

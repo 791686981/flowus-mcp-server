@@ -129,8 +129,13 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
         const page = await client.get(`/pages/${page_id}`);
         const blocks = await fetchAllBlockChildren(client, page_id, recursive);
         const rendered = renderPageToMarkdown(
-          page as Record<string, unknown>,
-          blocks as Array<Record<string, unknown>>,
+          page as { properties?: Record<string, unknown> },
+          blocks as Array<{
+            id: string;
+            type: string;
+            data?: Record<string, unknown>;
+            children?: unknown[];
+          }>,
           { includeProperties: include_properties },
         );
 
@@ -165,7 +170,7 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
         .describe("Reserved for future parser modes. Currently only strict parsing is supported."),
     },
     async ({ markdown, strict: _strict, ...pageArgs }) => {
-      let page: { id: string };
+      let page: { id: string } | undefined;
 
       try {
         const document = parseMarkdownDocument(markdown);

@@ -54,3 +54,15 @@ test("parseMarkdownDocument rejects malformed markdown tables before conversion"
     /table/i,
   );
 });
+
+test("parseMarkdownDocument rejects unsupported markdown constructs in strict mode", () => {
+  assert.throws(() => parseMarkdownDocument("#### Too deep"), /unsupported|heading/i);
+  assert.throws(() => parseMarkdownDocument("* wrong list marker"), /unsupported|list/i);
+  assert.throws(() => parseMarkdownDocument("![diagram](https://example.com/a.png)"), /unsupported|image/i);
+  assert.throws(
+    () =>
+      parseMarkdownDocument(`- parent
+  - child`),
+    /unsupported|nested list/i,
+  );
+});
