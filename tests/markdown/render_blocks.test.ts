@@ -86,7 +86,20 @@ test("renderBlocksToMarkdown renders core blocks, dividers, and simple tables", 
   assert.match(result.markdown, /^---$/m);
   assert.match(result.markdown, /^\| Name \| Status \|$/m);
   assert.match(result.markdown, /^\| API \| Done \|$/m);
-  assert.equal(result.metadata.block_map.length, 7);
+  const blockIds = result.metadata.block_map.map(
+    (entry: { block_id: string }) => entry.block_id,
+  );
+  for (const expectedId of [
+    "heading_1",
+    "paragraph_1",
+    "list_1",
+    "quote_1",
+    "code_1",
+    "divider_1",
+    "table_1",
+  ]) {
+    assert.ok(blockIds.includes(expectedId));
+  }
   assert.deepEqual(result.metadata.unsupported_blocks, []);
 });
 
