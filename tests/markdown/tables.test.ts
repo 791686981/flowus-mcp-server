@@ -47,6 +47,40 @@ test("normalizeTable accepts canonical inline text cell objects", () => {
   ]);
 });
 
+test("normalizeTable preserves formatted inline text arrays in cells", () => {
+  const table: TableNode = {
+    type: "table",
+    rows: [
+      [
+        [
+          {
+            type: "text",
+            text: { content: "P0" },
+            annotations: { bold: true, code: true },
+          },
+        ],
+        "Status",
+      ],
+    ],
+    hasHeaderRow: false,
+  };
+
+  const normalized = normalizeTable(table);
+
+  assert.deepEqual(normalized.rows[0], [
+    {
+      rich_text: [
+        {
+          type: "text",
+          text: { content: "P0" },
+          annotations: { bold: true, code: true },
+        },
+      ],
+    },
+    { rich_text: [{ type: "text", text: { content: "Status" } }] },
+  ]);
+});
+
 test("normalizeTable rejects rows with mismatched width", () => {
   const table: TableNode = {
     type: "table",
@@ -107,8 +141,14 @@ test("flowusTableToTableNode converts FlowUS table and rows to markdown table ro
 
   assert.equal(node.hasHeaderRow, true);
   assert.deepEqual(node.rows, [
-    ["Name", "Status"],
-    ["API", "Done"],
+    [
+      [{ type: "text", text: { content: "Name" } }],
+      [{ type: "text", text: { content: "Status" } }],
+    ],
+    [
+      [{ type: "text", text: { content: "API" } }],
+      [{ type: "text", text: { content: "Done" } }],
+    ],
   ]);
 });
 

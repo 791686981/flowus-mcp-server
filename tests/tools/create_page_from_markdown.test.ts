@@ -19,7 +19,11 @@ test("create_page_from_markdown creates a page and appends canonical markdown bl
     },
     markdown: `# Scope
 
-Ship the markdown API first.`,
+Ship the **\`P0\`** markdown API [first](https://example.com/first).
+
+- Parent
+  - Child _one_
+  - [x] Child two`,
   });
 
   const payload = JSON.parse(result.content[0].text);
@@ -70,11 +74,93 @@ Ship the markdown API first.`,
               {
                 type: "text",
                 text: {
-                  content: "Ship the markdown API first.",
+                  content: "Ship the ",
+                },
+              },
+              {
+                type: "text",
+                text: {
+                  content: "P0",
+                },
+                annotations: {
+                  bold: true,
+                  code: true,
+                },
+              },
+              {
+                type: "text",
+                text: {
+                  content: " markdown API ",
+                },
+              },
+              {
+                type: "text",
+                text: {
+                  content: "first",
+                  link: {
+                    url: "https://example.com/first",
+                  },
+                },
+              },
+              {
+                type: "text",
+                text: {
+                  content: ".",
                 },
               },
             ],
           },
+        },
+        {
+          type: "bulleted_list_item",
+          data: {
+            rich_text: [
+              {
+                type: "text",
+                text: {
+                  content: "Parent",
+                },
+              },
+            ],
+          },
+          children: [
+            {
+              type: "bulleted_list_item",
+              data: {
+                rich_text: [
+                  {
+                    type: "text",
+                    text: {
+                      content: "Child ",
+                    },
+                  },
+                  {
+                    type: "text",
+                    text: {
+                      content: "one",
+                    },
+                    annotations: {
+                      italic: true,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              type: "to_do",
+              data: {
+                checked: true,
+                rich_text: [
+                  {
+                    type: "text",
+                    text: {
+                      content: "Child two",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
         },
       ],
     },

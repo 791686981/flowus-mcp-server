@@ -62,6 +62,59 @@ test("normalizeBlockChildren expands callout icon shorthand", () => {
   );
 });
 
+test("normalizeBlockChildren normalizes nested child blocks recursively", () => {
+  assert.deepEqual(
+    normalizeBlockChildren([
+      {
+        type: "bulleted_list_item",
+        data: {
+          rich_text: "parent",
+        },
+        children: [
+          {
+            type: "to_do",
+            data: {
+              checked: true,
+              rich_text: "child",
+            },
+          },
+        ],
+      },
+    ]),
+    [
+      {
+        type: "bulleted_list_item",
+        data: {
+          rich_text: [
+            {
+              type: "text",
+              text: {
+                content: "parent",
+              },
+            },
+          ],
+        },
+        children: [
+          {
+            type: "to_do",
+            data: {
+              checked: true,
+              rich_text: [
+                {
+                  type: "text",
+                  text: {
+                    content: "child",
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  );
+});
+
 test("normalizeBlockChildren rejects shorthand on unsupported block types", () => {
   assert.throws(
     () =>

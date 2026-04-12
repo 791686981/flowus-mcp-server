@@ -40,35 +40,47 @@ function hasUnsupportedNonTextShorthand(data: Record<string, unknown>) {
   );
 }
 
-export function normalizeBlockChildren(children: InputBlockChildren): ApiBlockChildren {
-  const parsedChildren = InputBlockChildrenSchema.parse(children);
+function normalizeChildBlock(child: Record<string, unknown>) {
+  const typedChild = child as {
+    type: BlockType;
+    data: Record<string, unknown>;
+    children?: InputBlockChildren;
+  };
 
-  const normalizedChildren = parsedChildren.map((child) => {
-    if (!RICH_TEXT_BLOCK_TYPES.has(child.type)) {
-      if (hasUnsupportedNonTextShorthand(child.data)) {
-        throw new Error(`Unsupported shorthand for block type "${child.type}"`);
-      }
-
-      return child;
-    }
-
-    const normalizedData = normalizeTextBlockData(child.data);
-
-    if (child.type === "callout") {
-      return {
-        ...child,
-        data: {
-          ...normalizedData,
-          icon: normalizeIcon(child.data.icon),
-        },
-      };
+  if (!RICH_TEXT_BLOCK_TYPES.has(typedChild.type)) {
+    if (hasUnsupportedNonTextShorthand(typedChild.data)) {
+      throw new Error(`Unsupported shorthand for block type "${typedChild.type}"`);
     }
 
     return {
-      ...child,
-      data: normalizedData,
+      ...typedChild,
+      ...(typedChild.children ? { children: normalizeBlockChildren(typedChild.children) } : {}),
     };
-  });
+  }
+
+  const normalizedData = normalizeTextBlockData(typedChild.data);
+
+  if (typedChild.type === "callout") {
+      return {
+        ...typedChild,
+        data: {
+          ...normalizedData,
+          icon: normalizeIcon(typedChild.data.icon as Parameters<typeof normalizeIcon>[0]),
+        },
+        ...(typedChild.children ? { children: normalizeBlockChildren(typedChild.children) } : {}),
+      };
+  }
+
+  return {
+    ...typedChild,
+    data: normalizedData,
+    ...(typedChild.children ? { children: normalizeBlockChildren(typedChild.children) } : {}),
+  };
+}
+
+export function normalizeBlockChildren(children: InputBlockChildren): ApiBlockChildren {
+  const parsedChildren = InputBlockChildrenSchema.parse(children) as Array<Record<string, unknown>>;
+  const normalizedChildren = parsedChildren.map((child) => normalizeChildBlock(child));
 
   return ApiBlockChildrenSchema.parse(normalizedChildren);
 }

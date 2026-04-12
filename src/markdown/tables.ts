@@ -7,9 +7,31 @@ import type {
   TableNode,
 } from "./types.js";
 
-function toInlineRichText(cell: TableCellInput): InlineRichText {
+function toInlineRichText(cell: TableCellInput): InlineRichText[] {
   if (typeof cell === "string") {
-    return { type: "text", text: { content: cell } };
+    return [{ type: "text", text: { content: cell } }];
+  }
+
+  if (Array.isArray(cell)) {
+    return cell.map((item) => {
+      if (
+        item &&
+        typeof item === "object" &&
+        item.type === "text" &&
+        typeof item.text?.content === "string"
+      ) {
+        return {
+          type: "text" as const,
+          text: {
+            content: item.text.content,
+            ...(item.text.link ? { link: item.text.link } : {}),
+          },
+          ...(item.annotations ? { annotations: item.annotations } : {}),
+        };
+      }
+
+      throw new Error("Only inline text content is supported in table cells");
+    });
   }
 
   if (
@@ -18,14 +40,27 @@ function toInlineRichText(cell: TableCellInput): InlineRichText {
     (cell as { type?: string }).type === "text" &&
     typeof (cell as { text?: { content?: unknown } }).text?.content === "string"
   ) {
-    return { type: "text", text: { content: (cell as { text: { content: string } }).text.content } };
+    return [
+      {
+        type: "text",
+        text: {
+          content: (cell as { text: { content: string; link?: { url: string } } }).text.content,
+          ...((cell as { text: { content: string; link?: { url: string } } }).text.link
+            ? { link: (cell as { text: { content: string; link?: { url: string } } }).text.link }
+            : {}),
+        },
+        ...((cell as { annotations?: InlineRichText["annotations"] }).annotations
+          ? { annotations: (cell as { annotations: InlineRichText["annotations"] }).annotations }
+          : {}),
+      },
+    ];
   }
 
   throw new Error("Only inline text content is supported in table cells");
 }
 
 function toCell(cell: TableCellInput): TableCell {
-  return { rich_text: [toInlineRichText(cell)] };
+  return { rich_text: toInlineRichText(cell) };
 }
 
 export function normalizeTable(node: TableNode): NormalizedTable {
@@ -52,15 +87,26 @@ export function normalizeTable(node: TableNode): NormalizedTable {
   };
 }
 
-function flowUsCellToPlainText(cell: Array<{ type: string; text?: { content?: string } }>): string {
-  return cell
-    .map((item) => {
-      if (item.type === "text" && typeof item.text?.content === "string") {
-        return item.text.content;
-      }
-      throw new Error("Only text rich_text items are supported in table cells");
-    })
-    .join("");
+function flowUsCellToRichText(
+  cell: Array<{
+    type: string;
+    text?: { content?: string; link?: { url: string } };
+    annotations?: InlineRichText["annotations"];
+  }>,
+): InlineRichText[] {
+  return cell.map((item) => {
+    if (item.type === "text" && typeof item.text?.content === "string") {
+      return {
+        type: "text",
+        text: {
+          content: item.text.content,
+          ...(item.text.link ? { link: item.text.link } : {}),
+        },
+        ...(item.annotations ? { annotations: item.annotations } : {}),
+      };
+    }
+    throw new Error("Only text rich_text items are supported in table cells");
+  });
 }
 
 export function flowusTableToTableNode(table: FlowUsTableBlock): TableNode {
@@ -78,7 +124,7 @@ export function flowusTableToTableNode(table: FlowUsTableBlock): TableNode {
     if (row.data.cells.length !== width) {
       throw new Error(`Row ${index + 1} has mismatched column width`);
     }
-    return row.data.cells.map((cell) => flowUsCellToPlainText(cell));
+    return row.data.cells.map((cell) => flowUsCellToRichText(cell));
   });
 
   return {

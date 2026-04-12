@@ -7,7 +7,14 @@ test("blocksFromMarkdown converts supported markdown nodes into canonical block 
   const nodes: BlockNode[] = [
     {
       type: "heading_1",
-      rich_text: [{ type: "text", text: { content: "Project Spec" } }],
+      rich_text: [
+        { type: "text", text: { content: "Project Spec" } },
+        {
+          type: "text",
+          text: { content: " P0" },
+          annotations: { bold: true, code: true },
+        },
+      ],
     },
     {
       type: "paragraph",
@@ -16,6 +23,13 @@ test("blocksFromMarkdown converts supported markdown nodes into canonical block 
     {
       type: "bulleted_list_item",
       rich_text: [{ type: "text", text: { content: "Capture requirements" } }],
+      children: [
+        {
+          type: "to_do",
+          checked: true,
+          rich_text: [{ type: "text", text: { content: "Ship nested" } }],
+        },
+      ],
     },
     {
       type: "numbered_list_item",
@@ -46,7 +60,14 @@ test("blocksFromMarkdown converts supported markdown nodes into canonical block 
     {
       type: "heading_1",
       data: {
-        rich_text: [{ type: "text", text: { content: "Project Spec" } }],
+        rich_text: [
+          { type: "text", text: { content: "Project Spec" } },
+          {
+            type: "text",
+            text: { content: " P0" },
+            annotations: { bold: true, code: true },
+          },
+        ],
       },
     },
     {
@@ -60,6 +81,15 @@ test("blocksFromMarkdown converts supported markdown nodes into canonical block 
       data: {
         rich_text: [{ type: "text", text: { content: "Capture requirements" } }],
       },
+      children: [
+        {
+          type: "to_do",
+          data: {
+            checked: true,
+            rich_text: [{ type: "text", text: { content: "Ship nested" } }],
+          },
+        },
+      ],
     },
     {
       type: "numbered_list_item",

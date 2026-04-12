@@ -29,31 +29,6 @@ export const InputCalloutBlockDataSchema = InputTextBlockDataSchema.extend({
 
 export const InputGenericBlockDataSchema = z.record(z.string(), z.unknown());
 
-export const InputRichTextBlockObjectSchema = z.object({
-  type: RichTextBlockTypeEnum,
-  data: InputTextBlockDataSchema,
-});
-
-export const InputToDoBlockObjectSchema = z.object({
-  type: z.literal("to_do"),
-  data: InputToDoBlockDataSchema,
-});
-
-export const InputCodeBlockObjectSchema = z.object({
-  type: z.literal("code"),
-  data: InputCodeBlockDataSchema,
-});
-
-export const InputCalloutBlockObjectSchema = z.object({
-  type: z.literal("callout"),
-  data: InputCalloutBlockDataSchema,
-});
-
-export const InputGenericBlockObjectSchema = z.object({
-  type: NonNormalizedBlockTypeEnum,
-  data: InputGenericBlockDataSchema,
-});
-
 export const InputBlockDataSchema = z.union([
   InputCalloutBlockDataSchema,
   InputCodeBlockDataSchema,
@@ -62,18 +37,58 @@ export const InputBlockDataSchema = z.union([
   InputGenericBlockDataSchema,
 ]);
 
-export const InputBlockObjectSchema = z.union([
-  InputCalloutBlockObjectSchema,
-  InputCodeBlockObjectSchema,
-  InputToDoBlockObjectSchema,
-  InputRichTextBlockObjectSchema,
-  InputGenericBlockObjectSchema,
-]);
+export const InputBlockChildrenSchema: z.ZodTypeAny = z.lazy(() =>
+  z.array(InputBlockObjectSchema).min(1).max(100),
+).describe("Array of block objects to append (max 100 per request)");
 
-export const InputBlockChildrenSchema = z
-  .array(InputBlockObjectSchema)
-  .min(1)
-  .max(100)
-  .describe("Array of block objects to append (max 100 per request)");
+export const InputRichTextBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.object({
+    type: RichTextBlockTypeEnum,
+    data: InputTextBlockDataSchema,
+    children: InputBlockChildrenSchema.optional(),
+  }),
+);
+
+export const InputToDoBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.object({
+    type: z.literal("to_do"),
+    data: InputToDoBlockDataSchema,
+    children: InputBlockChildrenSchema.optional(),
+  }),
+);
+
+export const InputCodeBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.object({
+    type: z.literal("code"),
+    data: InputCodeBlockDataSchema,
+    children: InputBlockChildrenSchema.optional(),
+  }),
+);
+
+export const InputCalloutBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.object({
+    type: z.literal("callout"),
+    data: InputCalloutBlockDataSchema,
+    children: InputBlockChildrenSchema.optional(),
+  }),
+);
+
+export const InputGenericBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.object({
+    type: NonNormalizedBlockTypeEnum,
+    data: InputGenericBlockDataSchema,
+    children: InputBlockChildrenSchema.optional(),
+  }),
+);
+
+export const InputBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.union([
+    InputCalloutBlockObjectSchema,
+    InputCodeBlockObjectSchema,
+    InputToDoBlockObjectSchema,
+    InputRichTextBlockObjectSchema,
+    InputGenericBlockObjectSchema,
+  ]),
+);
 
 export { BlockTypeEnum };

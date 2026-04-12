@@ -1,52 +1,11 @@
 import { normalizeTable } from "./tables.js";
-import type { BlockNode, NormalizedTable } from "./types.js";
+import type { BlockNode, NormalizedTable, ParagraphLikeNode, ToDoNode } from "./types.js";
 
-type CanonicalBlock =
-  | {
-      type:
-        | "paragraph"
-        | "heading_1"
-        | "heading_2"
-        | "heading_3"
-        | "bulleted_list_item"
-        | "numbered_list_item"
-        | "quote";
-      data: {
-        rich_text: unknown[];
-      };
-    }
-  | {
-      type: "to_do";
-      data: {
-        checked: boolean;
-        rich_text: unknown[];
-      };
-    }
-  | {
-      type: "code";
-      data: {
-        language: string;
-        rich_text: unknown[];
-      };
-    }
-  | {
-      type: "divider";
-      data: Record<string, never>;
-    }
-  | {
-      type: "table";
-      data: {
-        table_width: number;
-        has_column_header: boolean;
-        has_row_header: boolean;
-      };
-      children: Array<{
-        type: "table_row";
-        data: {
-          cells: unknown[][];
-        };
-      }>;
-    };
+type CanonicalBlock = {
+  type: string;
+  data: Record<string, unknown>;
+  children?: CanonicalBlock[];
+};
 
 function tableBlockFromNormalizedTable(table: NormalizedTable): CanonicalBlock {
   return {
@@ -65,6 +24,39 @@ function tableBlockFromNormalizedTable(table: NormalizedTable): CanonicalBlock {
   };
 }
 
+function withChildren<T extends { children?: BlockNode[] }>(
+  block: T,
+  converted: CanonicalBlock,
+): CanonicalBlock {
+  if (!block.children || block.children.length === 0) {
+    return converted;
+  }
+
+  return {
+    ...converted,
+    children: blocksFromMarkdown(block.children),
+  };
+}
+
+function textBlockFromMarkdown(node: ParagraphLikeNode): CanonicalBlock {
+  return withChildren(node, {
+    type: node.type,
+    data: {
+      rich_text: node.rich_text,
+    },
+  });
+}
+
+function todoBlockFromMarkdown(node: ToDoNode): CanonicalBlock {
+  return withChildren(node, {
+    type: "to_do",
+    data: {
+      checked: node.checked,
+      rich_text: node.rich_text,
+    },
+  });
+}
+
 export function blocksFromMarkdown(nodes: BlockNode[]): CanonicalBlock[] {
   return nodes.map((node) => {
     switch (node.type) {
@@ -75,20 +67,9 @@ export function blocksFromMarkdown(nodes: BlockNode[]): CanonicalBlock[] {
       case "bulleted_list_item":
       case "numbered_list_item":
       case "quote":
-        return {
-          type: node.type,
-          data: {
-            rich_text: node.rich_text,
-          },
-        };
+        return textBlockFromMarkdown(node);
       case "to_do":
-        return {
-          type: "to_do",
-          data: {
-            checked: node.checked,
-            rich_text: node.rich_text,
-          },
-        };
+        return todoBlockFromMarkdown(node);
       case "code":
         return {
           type: "code",

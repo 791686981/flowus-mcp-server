@@ -1,6 +1,18 @@
+export type InlineTextAnnotations = {
+  bold?: boolean;
+  italic?: boolean;
+  strikethrough?: boolean;
+  underline?: boolean;
+  code?: boolean;
+};
+
 export type InlineRichText = {
   type: "text";
-  text: { content: string };
+  text: {
+    content: string;
+    link?: { url: string };
+  };
+  annotations?: InlineTextAnnotations;
 };
 
 export type ParagraphLikeType =
@@ -15,12 +27,14 @@ export type ParagraphLikeType =
 export type ParagraphLikeNode = {
   type: ParagraphLikeType;
   rich_text: InlineRichText[];
+  children?: BlockNode[];
 };
 
 export type ToDoNode = {
   type: "to_do";
   rich_text: InlineRichText[];
   checked: boolean;
+  children?: BlockNode[];
 };
 
 export type CodeBlockNode = {
@@ -39,7 +53,7 @@ export type TableCell = {
 
 export type TableRow = TableCell[];
 
-export type TableCellInput = string | InlineRichText;
+export type TableCellInput = string | InlineRichText | InlineRichText[];
 
 export type TableNode = {
   type: "table";

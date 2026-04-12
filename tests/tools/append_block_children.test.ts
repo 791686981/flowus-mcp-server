@@ -14,10 +14,19 @@ test("append_block_children normalizes shorthand blocks before patching", async 
     block_id: "page_123",
     children: [
       {
-        type: "paragraph",
+        type: "bulleted_list_item",
         data: {
           rich_text: "hello",
         },
+        children: [
+          {
+            type: "to_do",
+            data: {
+              checked: true,
+              rich_text: "child",
+            },
+          },
+        ],
       },
       {
         type: "callout",
@@ -35,7 +44,7 @@ test("append_block_children normalizes shorthand blocks before patching", async 
     body: {
       children: [
         {
-          type: "paragraph",
+          type: "bulleted_list_item",
           data: {
             rich_text: [
               {
@@ -46,6 +55,22 @@ test("append_block_children normalizes shorthand blocks before patching", async 
               },
             ],
           },
+          children: [
+            {
+              type: "to_do",
+              data: {
+                checked: true,
+                rich_text: [
+                  {
+                    type: "text",
+                    text: {
+                      content: "child",
+                    },
+                  },
+                ],
+              },
+            },
+          ],
         },
         {
           type: "callout",

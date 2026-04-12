@@ -77,31 +77,6 @@ export const ApiCalloutBlockDataSchema = ApiTextBlockDataSchema.extend({
 
 export const ApiGenericBlockDataSchema = z.record(z.string(), z.unknown());
 
-export const ApiRichTextBlockObjectSchema = z.object({
-  type: RichTextBlockTypeEnum,
-  data: ApiTextBlockDataSchema,
-});
-
-export const ApiToDoBlockObjectSchema = z.object({
-  type: z.literal("to_do"),
-  data: ApiToDoBlockDataSchema,
-});
-
-export const ApiCodeBlockObjectSchema = z.object({
-  type: z.literal("code"),
-  data: ApiCodeBlockDataSchema,
-});
-
-export const ApiCalloutBlockObjectSchema = z.object({
-  type: z.literal("callout"),
-  data: ApiCalloutBlockDataSchema,
-});
-
-export const ApiGenericBlockObjectSchema = z.object({
-  type: NonNormalizedBlockTypeEnum,
-  data: ApiGenericBlockDataSchema,
-});
-
 export const ApiBlockDataSchema = z.union([
   ApiCalloutBlockDataSchema,
   ApiCodeBlockDataSchema,
@@ -110,16 +85,56 @@ export const ApiBlockDataSchema = z.union([
   ApiGenericBlockDataSchema,
 ]);
 
-export const ApiBlockObjectSchema = z.union([
-  ApiCalloutBlockObjectSchema,
-  ApiCodeBlockObjectSchema,
-  ApiToDoBlockObjectSchema,
-  ApiRichTextBlockObjectSchema,
-  ApiGenericBlockObjectSchema,
-]);
+export const ApiBlockChildrenSchema: z.ZodTypeAny = z.lazy(() =>
+  z.array(ApiBlockObjectSchema).min(1).max(100),
+).describe("Array of block objects to append (max 100 per request)");
 
-export const ApiBlockChildrenSchema = z
-  .array(ApiBlockObjectSchema)
-  .min(1)
-  .max(100)
-  .describe("Array of block objects to append (max 100 per request)");
+export const ApiRichTextBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.object({
+    type: RichTextBlockTypeEnum,
+    data: ApiTextBlockDataSchema,
+    children: ApiBlockChildrenSchema.optional(),
+  }),
+);
+
+export const ApiToDoBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.object({
+    type: z.literal("to_do"),
+    data: ApiToDoBlockDataSchema,
+    children: ApiBlockChildrenSchema.optional(),
+  }),
+);
+
+export const ApiCodeBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.object({
+    type: z.literal("code"),
+    data: ApiCodeBlockDataSchema,
+    children: ApiBlockChildrenSchema.optional(),
+  }),
+);
+
+export const ApiCalloutBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.object({
+    type: z.literal("callout"),
+    data: ApiCalloutBlockDataSchema,
+    children: ApiBlockChildrenSchema.optional(),
+  }),
+);
+
+export const ApiGenericBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.object({
+    type: NonNormalizedBlockTypeEnum,
+    data: ApiGenericBlockDataSchema,
+    children: ApiBlockChildrenSchema.optional(),
+  }),
+);
+
+export const ApiBlockObjectSchema: z.ZodTypeAny = z.lazy(() =>
+  z.union([
+    ApiCalloutBlockObjectSchema,
+    ApiCodeBlockObjectSchema,
+    ApiToDoBlockObjectSchema,
+    ApiRichTextBlockObjectSchema,
+    ApiGenericBlockObjectSchema,
+  ]),
+);

@@ -174,7 +174,11 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
 
       try {
         const document = parseMarkdownDocument(markdown);
-        const children = BlockChildrenSchema.parse(blocksFromMarkdown(document.nodes));
+        const children = BlockChildrenSchema.parse(blocksFromMarkdown(document.nodes)) as Array<{
+          type: string;
+          data: Record<string, unknown>;
+          children?: unknown[];
+        }>;
 
         page = (await client.post("/pages", buildCreatePagePayload(pageArgs))) as { id: string };
         const blocks = await client.patch(`/blocks/${page.id}/children`, { children });

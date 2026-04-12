@@ -122,6 +122,122 @@ test("renderBlocksToMarkdown renders core blocks, dividers, and simple tables", 
   assert.deepEqual(result.metadata.unsupported_blocks, []);
 });
 
+test("renderBlocksToMarkdown preserves supported inline formatting for text blocks and tables", () => {
+  const result = renderBlocksToMarkdown([
+    {
+      id: "paragraph_1",
+      type: "paragraph",
+      data: {
+        rich_text: [
+          { type: "text", text: { content: "Priority " } },
+          {
+            type: "text",
+            text: { content: "P0" },
+            annotations: { bold: true, code: true },
+          },
+          { type: "text", text: { content: " in " } },
+          {
+            type: "text",
+            text: { content: "docs", link: { url: "https://example.com/spec" } },
+          },
+          { type: "text", text: { content: "." } },
+        ],
+      },
+    },
+    {
+      id: "table_1",
+      type: "table",
+      data: {
+        table_width: 2,
+        has_column_header: true,
+        has_row_header: false,
+      },
+      children: [
+        {
+          id: "row_1",
+          type: "table_row",
+          data: {
+            cells: [
+              [{ type: "text", text: { content: "Name" } }],
+              [{ type: "text", text: { content: "Priority" } }],
+            ],
+          },
+        },
+        {
+          id: "row_2",
+          type: "table_row",
+          data: {
+            cells: [
+              [{ type: "text", text: { content: "API" } }],
+              [
+                {
+                  type: "text",
+                  text: { content: "P1" },
+                  annotations: { bold: true, code: true },
+                },
+              ],
+            ],
+          },
+        },
+      ],
+    },
+  ]);
+
+  assert.match(result.markdown, /Priority \*\*`P0`\*\* in \[docs\]\(https:\/\/example\.com\/spec\)\./);
+  assert.match(result.markdown, /^\| API \| \*\*`P1`\*\* \|$/m);
+});
+
+test("renderBlocksToMarkdown renders nested lists and underscore syntax cleanly", () => {
+  const result = renderBlocksToMarkdown([
+    {
+      id: "list_parent",
+      type: "bulleted_list_item",
+      data: {
+        rich_text: [
+          { type: "text", text: { content: "Parent " } },
+          {
+            type: "text",
+            text: { content: "bold" },
+            annotations: { bold: true },
+          },
+        ],
+      },
+      children: [
+        {
+          id: "list_child_1",
+          type: "bulleted_list_item",
+          data: {
+            rich_text: [
+              { type: "text", text: { content: "Child " } },
+              {
+                type: "text",
+                text: { content: "one" },
+                annotations: { italic: true },
+              },
+            ],
+          },
+        },
+        {
+          id: "list_child_2",
+          type: "to_do",
+          data: {
+            checked: true,
+            rich_text: [{ type: "text", text: { content: "Child two" } }],
+          },
+        },
+      ],
+    },
+  ]);
+
+  assert.match(result.markdown, /^- \*\*bold\*\*|^- Parent \*\*bold\*\*/m);
+  assert.match(result.markdown, /^  - Child \*one\*$/m);
+  assert.match(result.markdown, /^  - \[x\] Child two$/m);
+  assert.deepEqual(
+    result.metadata.block_map.map((entry: { block_id: string }) => entry.block_id),
+    ["list_parent", "list_child_1", "list_child_2"],
+  );
+});
+
 test("renderBlocksToMarkdown emits placeholders and metadata for unsupported blocks", () => {
   const result = renderBlocksToMarkdown([
     {
@@ -159,4 +275,24 @@ test("renderBlocksToMarkdown does not silently drop non-text rich text segments"
 
   assert.match(result.markdown, /Energy:/);
   assert.match(result.markdown, /\[unsupported-rich-text type="equation"\]/);
+});
+
+test("renderBlocksToMarkdown keeps fenced code block content literal", () => {
+  const result = renderBlocksToMarkdown([
+    {
+      id: "code_2",
+      type: "code",
+      data: {
+        language: "md",
+        rich_text: [
+          {
+            type: "text",
+            text: { content: "**`P0`** and [docs](https://example.com)" },
+          },
+        ],
+      },
+    },
+  ]);
+
+  assert.match(result.markdown, /```md[\s\S]*\*\*`P0`\*\* and \[docs\]\(https:\/\/example\.com\)[\s\S]*```/m);
 });
