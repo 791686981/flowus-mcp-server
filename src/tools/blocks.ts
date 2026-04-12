@@ -1,11 +1,13 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
-import { jsonResponse, errorResponse } from "../client.js";
+import { FlowUsLocalError, jsonResponse, errorResponse } from "../client.js";
 import { BlockChildrenSchema, BlockDataSchema, BlockTypeEnum } from "../schemas/blocks.js";
 import { InputBlockChildrenSchema } from "../schemas/input/blocks.js";
 import { normalizeBlockChildren } from "../normalizers/blocks.js";
 import { parseAndNormalize } from "../utils/validation.js";
+import { appendChildrenWithDeferredTableRows, type CanonicalBlock } from "../utils/append_children.js";
+import { fetchPagedBlockChildren } from "../utils/block_children.js";
 
 export function registerBlockTools(server: McpServer, client: FlowUsClient) {
   server.tool(
@@ -45,12 +47,13 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
     },
     async ({ block_id, page_size, start_cursor, recursive }) => {
       try {
-        const params: Record<string, string> = {};
-        if (page_size !== undefined) params.page_size = String(page_size);
-        if (start_cursor) params.start_cursor = start_cursor;
-        if (recursive !== undefined) params.recursive = String(recursive);
-
-        return jsonResponse(await client.get(`/blocks/${block_id}/children`, params));
+        return jsonResponse(
+          await fetchPagedBlockChildren(client, block_id, {
+            pageSize: page_size,
+            startCursor: start_cursor,
+            recursive,
+          }),
+        );
       } catch (error) {
         return errorResponse(error);
       }
@@ -59,17 +62,24 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
 
   server.tool(
     "append_block_children",
-    "Append child blocks to a page or block. Supports all block types: paragraph, headings, lists, to_do, quote, toggle, code, callout, equation, divider, bookmark, embed, image, file, table, and more.",
+    "Append child blocks to a page or block. Supports all block types: paragraph, headings, lists, to_do, quote, toggle, code, callout, equation, divider, bookmark, embed, image, file, table, and more. Note: the current FlowUS Blocks API only appends to the end; positional insertion via after is not supported.",
     {
       block_id: z.string().describe("The parent block or page ID to append to"),
       children: InputBlockChildrenSchema,
       after: z
         .string()
         .optional()
-        .describe("Block ID to insert after. If omitted, appends to the end."),
+        .describe("Reserved for future positional insertion. The current FlowUS Blocks API does not support after and this server will reject it."),
     },
     async ({ block_id, children, after }) => {
       try {
+        if (after) {
+          throw new FlowUsLocalError(
+            "input",
+            "The after parameter is not supported because the current FlowUS Blocks API only appends children to the end.",
+          );
+        }
+
         const body: Record<string, unknown> = {
           children: parseAndNormalize(
             InputBlockChildrenSchema,
@@ -78,9 +88,12 @@ export function registerBlockTools(server: McpServer, client: FlowUsClient) {
             BlockChildrenSchema,
           ),
         };
-        if (after) body.after = after;
 
-        return jsonResponse(await client.patch(`/blocks/${block_id}/children`, body));
+        return jsonResponse(await appendChildrenWithDeferredTableRows(
+          client,
+          block_id,
+          body.children as CanonicalBlock[],
+        ));
       } catch (error) {
         return errorResponse(error);
       }

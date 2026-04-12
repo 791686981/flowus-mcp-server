@@ -1,6 +1,6 @@
 {
   "name": "flowus-mcp-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MCP server for FlowUS API with full block type and rich text support",
   "type": "module",
   "main": "dist/index.js",
@@ -11,6 +11,7 @@
     "build": "tsc",
     "prepare": "npm run build",
     "test": "tsx --test tests/**/*.test.ts",
+    "test:e2e": "npm run build && tsx --test tests/e2e/**/*.test.ts",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js"
   },

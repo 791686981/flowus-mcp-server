@@ -11,8 +11,16 @@ export {
   InputTitlePropertySchema,
 } from "./input/properties.js";
 
-export const DatabasePropertiesSchema = z
-  .record(z.string(), z.unknown())
+export const DatabasePropertyDefinitionSchema = z
+  .object({
+    id: z.string(),
+    name: z.string().min(1),
+    type: z.string().min(1),
+  })
+  .passthrough();
+
+export const CreateDatabasePropertiesSchema = z
+  .record(z.string(), DatabasePropertyDefinitionSchema)
   .describe(
     `Database property schema definitions. Keys are property IDs. Each value MUST include "name" and "type" fields.
 
@@ -30,3 +38,13 @@ CORRECT format:
 - relation: { "id": "rel", "name": "Related", "type": "relation", "relation": { "database_id": "target-db-uuid" } }
 Set a property to null to delete it.`,
   );
+
+export const UpdateDatabasePropertiesSchema = z
+  .record(z.string(), z.union([DatabasePropertyDefinitionSchema, z.null()]))
+  .describe(
+    "Database property schema definitions for updates. Each value must include id/name/type, or be null to delete the column.",
+  );
+
+export {
+  CreateDatabasePropertiesSchema as DatabasePropertiesSchema,
+};

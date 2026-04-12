@@ -67,12 +67,16 @@ test("normalizeBlockChildren rejects shorthand on unsupported block types", () =
     () =>
       normalizeBlockChildren([
         {
-          type: "bookmark",
+          type: "image",
           data: {
+            type: "external",
+            external: {
+              url: "https://example.com/image.png",
+            },
             rich_text: "hello",
           },
         },
       ]),
-    /Unsupported shorthand for block type "bookmark"/,
+    /Unsupported shorthand for block type "image"/,
   );
 });

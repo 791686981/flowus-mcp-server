@@ -98,3 +98,101 @@ test("create_page_from_markdown fails locally for malformed markdown before any 
   assert.match(result.content[0].text, /table/i);
   assert.equal(client.requests.length, 0);
 });
+
+test("create_page_from_markdown preserves table rows when appending markdown tables", async () => {
+  const client = createFakeFlowUsClient();
+  client.setResponse("post", { id: "page_123" });
+  client.patch = async (path: string, body?: unknown) => {
+    client.requests.push({ method: "patch", path, body });
+    if (path === "/blocks/page_123/children") {
+      return {
+        results: [
+          {
+            id: "heading_123",
+            type: "heading_1",
+          },
+          {
+            id: "table_123",
+            type: "table",
+            data: {
+              table_width: 2,
+              has_column_header: false,
+              has_row_header: false,
+            },
+          },
+        ],
+      };
+    }
+
+    return { results: [] };
+  };
+
+  const runner = createToolRunner(registerCompositeTools, client);
+
+  await runner.callTool("create_page_from_markdown", {
+    properties: {
+      title: "Table Markdown",
+    },
+    markdown: `# 表格页
+
+| 字段 | 值 |
+| --- | --- |
+| 状态 | 正常 |`,
+  });
+
+  assert.deepEqual(client.requests[1], {
+    method: "patch",
+    path: "/blocks/page_123/children",
+    body: {
+      children: [
+        {
+          type: "heading_1",
+          data: {
+            rich_text: [
+              {
+                type: "text",
+                text: {
+                  content: "表格页",
+                },
+              },
+            ],
+          },
+        },
+        {
+          type: "table",
+          data: {
+            table_width: 2,
+            has_column_header: true,
+            has_row_header: false,
+          },
+        },
+      ],
+    },
+  });
+  assert.deepEqual(client.requests[2], {
+    method: "patch",
+    path: "/blocks/table_123/children",
+    body: {
+      children: [
+        {
+          type: "table_row",
+          data: {
+            cells: [
+              [{ type: "text", text: { content: "字段" } }],
+              [{ type: "text", text: { content: "值" } }],
+            ],
+          },
+        },
+        {
+          type: "table_row",
+          data: {
+            cells: [
+              [{ type: "text", text: { content: "状态" } }],
+              [{ type: "text", text: { content: "正常" } }],
+            ],
+          },
+        },
+      ],
+    },
+  });
+});

@@ -7,10 +7,21 @@ import { normalizeIcon } from "../normalizers/icon.js";
 import { normalizePageProperties } from "../normalizers/properties.js";
 import { PagePropertiesSchema } from "../schemas/properties.js";
 
-export const PageParentSchema = z.object({
-  page_id: z.string().optional().describe("Parent page ID"),
-  database_id: z.string().optional().describe("Parent database ID"),
-});
+export const PageParentSchema = z
+  .object({
+    page_id: z.string().optional().describe("Parent page ID"),
+    database_id: z.string().optional().describe("Parent database ID"),
+  })
+  .superRefine((value, ctx) => {
+    const definedKeys = ["page_id", "database_id"].filter((key) => value[key as keyof typeof value] !== undefined);
+    if (definedKeys.length !== 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "parent must include exactly one of page_id or database_id",
+        path: [],
+      });
+    }
+  });
 
 const NormalizedPagePayloadSchema = z.object({
   parent: PageParentSchema.optional(),

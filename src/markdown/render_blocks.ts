@@ -84,7 +84,19 @@ function renderBlock(block: FlowUsBlock): { markdown: string; unsupported?: Unsu
     case "divider":
       return { markdown: "---" };
     case "table":
-      return { markdown: renderTable(block) };
+      try {
+        return { markdown: renderTable(block) };
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        return {
+          markdown: `[flowus-block type="${block.type}" id="${block.id}"]`,
+          unsupported: {
+            block_id: block.id,
+            type: block.type,
+            reason: `Failed to render table: ${reason}`,
+          },
+        };
+      }
     default:
       return {
         markdown: `[flowus-block type="${block.type}" id="${block.id}"]`,

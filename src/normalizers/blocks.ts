@@ -3,12 +3,17 @@ import {
   ApiBlockChildrenSchema,
   BlockTypeEnum,
 } from "../schemas/api/blocks.js";
-import { InputRichTextSchema } from "../schemas/input/common.js";
+import { InputIconSchema, InputRichTextSchema } from "../schemas/input/common.js";
 import { InputBlockChildrenSchema } from "../schemas/input/blocks.js";
 import { normalizeIcon } from "./icon.js";
 import { normalizeRichText } from "./rich_text.js";
 
 type InputBlockChildren = z.input<typeof InputBlockChildrenSchema>;
+type InputBlockChild = {
+  type: string;
+  data: Record<string, unknown>;
+  children?: InputBlockChildren;
+};
 type ApiBlockChildren = z.output<typeof ApiBlockChildrenSchema>;
 type BlockType = z.infer<typeof BlockTypeEnum>;
 
@@ -33,6 +38,13 @@ function normalizeTextBlockData(data: Record<string, unknown>) {
   };
 }
 
+function normalizeTemplateBlockData(data: Record<string, unknown>) {
+  return {
+    ...data,
+    rich_text: normalizeRichText(InputRichTextSchema.parse(data.rich_text)),
+  };
+}
+
 function hasUnsupportedNonTextShorthand(data: Record<string, unknown>) {
   return (
     "rich_text" in data ||
@@ -40,35 +52,54 @@ function hasUnsupportedNonTextShorthand(data: Record<string, unknown>) {
   );
 }
 
-export function normalizeBlockChildren(children: InputBlockChildren): ApiBlockChildren {
-  const parsedChildren = InputBlockChildrenSchema.parse(children);
+function normalizeChildBlock(child: InputBlockChild) {
+  const normalizedChildren = Array.isArray(child.children)
+    ? normalizeBlockChildren(child.children as InputBlockChildren)
+    : undefined;
 
-  const normalizedChildren = parsedChildren.map((child) => {
-    if (!RICH_TEXT_BLOCK_TYPES.has(child.type)) {
-      if (hasUnsupportedNonTextShorthand(child.data)) {
-        throw new Error(`Unsupported shorthand for block type "${child.type}"`);
-      }
-
-      return child;
-    }
-
-    const normalizedData = normalizeTextBlockData(child.data);
+  if (RICH_TEXT_BLOCK_TYPES.has(child.type as BlockType)) {
+    const normalizedData = normalizeTextBlockData(child.data as Record<string, unknown>);
 
     if (child.type === "callout") {
       return {
         ...child,
         data: {
           ...normalizedData,
-          icon: normalizeIcon(child.data.icon),
+          icon: normalizeIcon(InputIconSchema.parse(child.data.icon)),
         },
+        ...(normalizedChildren ? { children: normalizedChildren } : {}),
       };
     }
 
     return {
       ...child,
       data: normalizedData,
+      ...(normalizedChildren ? { children: normalizedChildren } : {}),
     };
-  });
+  }
+
+  if (child.type === "template") {
+    return {
+      ...child,
+      data: normalizeTemplateBlockData(child.data),
+      ...(normalizedChildren ? { children: normalizedChildren } : {}),
+    };
+  }
+
+  if (hasUnsupportedNonTextShorthand(child.data as Record<string, unknown>)) {
+    throw new Error(`Unsupported shorthand for block type "${child.type as string}"`);
+  }
+
+  return {
+    ...child,
+    ...(normalizedChildren ? { children: normalizedChildren } : {}),
+  };
+}
+
+export function normalizeBlockChildren(children: InputBlockChildren): ApiBlockChildren {
+  const parsedChildren = InputBlockChildrenSchema.parse(children) as InputBlockChild[];
+
+  const normalizedChildren = parsedChildren.map((child) => normalizeChildBlock(child));
 
   return ApiBlockChildrenSchema.parse(normalizedChildren);
 }

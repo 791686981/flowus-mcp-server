@@ -79,3 +79,86 @@ test("create_page_with_content keeps append failures separate in the response", 
     },
   });
 });
+
+test("create_page_with_content appends table rows in a follow-up call", async () => {
+  const client = createFakeFlowUsClient();
+  client.setResponse("post", { id: "page_123" });
+  client.patch = async (path: string, body?: unknown) => {
+    client.requests.push({ method: "patch", path, body });
+    if (path === "/blocks/page_123/children") {
+      return {
+        results: [
+          {
+            id: "table_123",
+            type: "table",
+          },
+        ],
+      };
+    }
+
+    return { results: [] };
+  };
+
+  const runner = createToolRunner(registerCompositeTools, client);
+
+  await runner.callTool("create_page_with_content", {
+    properties: {
+      title: "表格页面",
+    },
+    children: [
+      {
+        type: "table",
+        data: {
+          table_width: 2,
+          has_column_header: true,
+          has_row_header: false,
+        },
+        children: [
+          {
+            type: "table_row",
+            data: {
+              cells: [
+                [{ type: "text", text: { content: "字段" } }],
+                [{ type: "text", text: { content: "值" } }],
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  });
+
+  assert.deepEqual(client.requests[1], {
+    method: "patch",
+    path: "/blocks/page_123/children",
+    body: {
+      children: [
+        {
+          type: "table",
+          data: {
+            table_width: 2,
+            has_column_header: true,
+            has_row_header: false,
+          },
+        },
+      ],
+    },
+  });
+  assert.deepEqual(client.requests[2], {
+    method: "patch",
+    path: "/blocks/table_123/children",
+    body: {
+      children: [
+        {
+          type: "table_row",
+          data: {
+            cells: [
+              [{ type: "text", text: { content: "字段" } }],
+              [{ type: "text", text: { content: "值" } }],
+            ],
+          },
+        },
+      ],
+    },
+  });
+});

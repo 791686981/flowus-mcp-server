@@ -160,3 +160,45 @@ test("renderBlocksToMarkdown does not silently drop non-text rich text segments"
   assert.match(result.markdown, /Energy:/);
   assert.match(result.markdown, /\[unsupported-rich-text type="equation"\]/);
 });
+
+test("renderBlocksToMarkdown degrades malformed tables instead of failing the whole page", () => {
+  const result = renderBlocksToMarkdown([
+    {
+      id: "paragraph_1",
+      type: "paragraph",
+      data: {
+        rich_text: [{ type: "text", text: { content: "表格前面的内容" } }],
+      },
+    },
+    {
+      id: "table_broken",
+      type: "table",
+      data: {
+        table_width: 2,
+        has_column_header: true,
+        has_row_header: false,
+      },
+      children: [
+        {
+          id: "row_1",
+          type: "table_row",
+          data: {
+            cells: [
+              [{ type: "text", text: { content: "只有一列" } }],
+            ],
+          },
+        },
+      ],
+    },
+  ]);
+
+  assert.match(result.markdown, /表格前面的内容/);
+  assert.match(result.markdown, /\[flowus-block type="table" id="table_broken"\]/);
+  assert.deepEqual(result.metadata.unsupported_blocks, [
+    {
+      block_id: "table_broken",
+      type: "table",
+      reason: "Failed to render table: Row 1 has mismatched column width",
+    },
+  ]);
+});

@@ -24,5 +24,6 @@ test("composite tools register without throwing", () => {
     assert.ok(runner.getTool("create_page_with_content"));
     assert.ok(runner.getTool("read_page_content"));
     assert.ok(runner.getTool("read_page_as_markdown"));
+    assert.ok(runner.getTool("read_page_tree"));
   });
 });

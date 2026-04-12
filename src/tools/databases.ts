@@ -3,7 +3,10 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FlowUsClient } from "../client.js";
 import { jsonResponse, errorResponse } from "../client.js";
 import { IconSchema, CoverSchema } from "../schemas/common.js";
-import { DatabasePropertiesSchema } from "../schemas/properties.js";
+import {
+  CreateDatabasePropertiesSchema,
+  UpdateDatabasePropertiesSchema,
+} from "../schemas/properties.js";
 
 export function registerDatabaseTools(server: McpServer, client: FlowUsClient) {
   server.tool(
@@ -22,7 +25,7 @@ export function registerDatabaseTools(server: McpServer, client: FlowUsClient) {
           }),
         }),
       ).describe("Database title"),
-      properties: DatabasePropertiesSchema.describe("Database property schema definitions"),
+      properties: CreateDatabasePropertiesSchema.describe("Database property schema definitions"),
       icon: IconSchema.optional(),
       is_inline: z.boolean().optional().describe("If true, create as inline database"),
     },
@@ -93,7 +96,7 @@ export function registerDatabaseTools(server: McpServer, client: FlowUsClient) {
         )
         .optional()
         .describe("New database title"),
-      properties: DatabasePropertiesSchema.optional().describe(
+      properties: UpdateDatabasePropertiesSchema.optional().describe(
         "Properties to add/update. Set a property key to null to delete it.",
       ),
       icon: IconSchema.optional(),

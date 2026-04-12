@@ -10,34 +10,9 @@ import { InputIconSchema } from "../schemas/input/common.js";
 import { InputPagePropertiesSchema } from "../schemas/input/properties.js";
 import { BlockChildrenSchema } from "../schemas/blocks.js";
 import { PageParentSchema, buildCreatePagePayload } from "../utils/validation.js";
-
-async function fetchAllBlockChildren(
-  client: FlowUsClient,
-  blockId: string,
-  recursive: boolean,
-) {
-  const allResults: unknown[] = [];
-  let cursor: string | undefined;
-  let hasMore = true;
-
-  while (hasMore) {
-    const params: Record<string, string> = { page_size: "100" };
-    if (recursive) params.recursive = "true";
-    if (cursor) params.start_cursor = cursor;
-
-    const response = await client.get<{
-      results: unknown[];
-      has_more: boolean;
-      next_cursor: string | null;
-    }>(`/blocks/${blockId}/children`, params);
-
-    allResults.push(...response.results);
-    hasMore = response.has_more;
-    cursor = response.next_cursor ?? undefined;
-  }
-
-  return allResults;
-}
+import { appendChildrenWithDeferredTableRows, type CanonicalBlock } from "../utils/append_children.js";
+import { countBlocksDeep, fetchAllBlockChildren } from "../utils/block_children.js";
+import { readPageTree } from "../utils/page_tree.js";
 
 export function registerCompositeTools(server: McpServer, client: FlowUsClient) {
   server.tool(
@@ -65,7 +40,11 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
 
       // Step 2: Append content blocks (page already created at this point)
       try {
-        const blocks = await client.patch(`/blocks/${page.id}/children`, { children });
+        const blocks = await appendChildrenWithDeferredTableRows(
+          client,
+          page.id,
+          children as CanonicalBlock[],
+        );
         return jsonResponse({ page, blocks });
       } catch (error) {
         const msg = error instanceof FlowUsClientError ? error.message : String(error);
@@ -96,7 +75,7 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
         const page = await client.get(`/pages/${page_id}`);
         const allResults = await fetchAllBlockChildren(client, page_id, recursive);
 
-        return jsonResponse({ page, blocks: { results: allResults, total: allResults.length } });
+        return jsonResponse({ page, blocks: { results: allResults, total: countBlocksDeep(allResults) } });
       } catch (error) {
         return errorResponse(error);
       }
@@ -151,6 +130,28 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
   );
 
   server.tool(
+    "read_page_tree",
+    "Read a page's child-page tree and return direct child counts plus a numbered directory-style hierarchy.",
+    {
+      page_id: z.string().describe("The page ID to inspect"),
+      max_depth: z
+        .number()
+        .int()
+        .min(1)
+        .max(20)
+        .optional()
+        .describe("Optional maximum child depth to traverse. 1 means only direct children."),
+    },
+    async ({ page_id, max_depth }) => {
+      try {
+        return jsonResponse(await readPageTree(client, page_id, max_depth));
+      } catch (error) {
+        return errorResponse(error);
+      }
+    },
+  );
+
+  server.tool(
     "create_page_from_markdown",
     "Create a page from Markdown content while keeping page properties explicit. The markdown body is parsed into supported FlowUS blocks locally before any API call.",
     {
@@ -177,7 +178,11 @@ export function registerCompositeTools(server: McpServer, client: FlowUsClient) 
         const children = BlockChildrenSchema.parse(blocksFromMarkdown(document.nodes));
 
         page = (await client.post("/pages", buildCreatePagePayload(pageArgs))) as { id: string };
-        const blocks = await client.patch(`/blocks/${page.id}/children`, { children });
+        const blocks = await appendChildrenWithDeferredTableRows(
+          client,
+          page.id,
+          children as CanonicalBlock[],
+        );
 
         return jsonResponse({
           page,
