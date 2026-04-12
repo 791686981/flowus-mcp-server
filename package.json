@@ -1,6 +1,6 @@
 {
   "name": "flowus-mcp-server",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "MCP server for FlowUS API with full block type and rich text support",
   "type": "module",
   "main": "dist/index.js",
